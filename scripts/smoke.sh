@@ -3,7 +3,7 @@
 set -eu
 : "${GC_ADMIN_TOKEN:?Set GC_ADMIN_TOKEN from locally generated .env}"
 BASE="http://127.0.0.1:${WEB_PORT:-4173}"
-REST="http://127.0.0.1:${REST_PORT:-3000}"
+REST="$BASE/rest"
 ready=0
 for attempt in $(seq 1 20); do
     if curl --fail --silent --output /dev/null "$BASE/api/healthz" &&

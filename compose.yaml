@@ -18,7 +18,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-    networks: [internal]
+    networks: [data]
 
   api:
     build: ./apps/api
@@ -33,7 +33,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    networks: [internal]
+    networks: [data]
     read_only: true
     security_opt: [no-new-privileges:true]
 
@@ -45,12 +45,10 @@ services:
       PGRST_DB_SCHEMAS: app
       PGRST_DB_ANON_ROLE: gc_anon
       PGRST_DB_MAX_ROWS: "100"
-    ports:
-      - "127.0.0.1:${REST_PORT:-3000}:3000"
     depends_on:
       postgres:
         condition: service_healthy
-    networks: [internal]
+    networks: [data]
     read_only: true
     security_opt: [no-new-privileges:true]
 
@@ -59,8 +57,8 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:${WEB_PORT:-4173}:8080"
-    depends_on: [api]
-    networks: [internal]
+    depends_on: [api, rest]
+    networks: [data, access]
     read_only: true
     tmpfs:
       - /tmp
@@ -69,8 +67,9 @@ services:
     security_opt: [no-new-privileges:true]
 
 networks:
-  internal:
+  data:
     internal: true
+  access: {}
 
 volumes:
   pg_data:

@@ -15,7 +15,7 @@ lines = [
 ]
 for name in ("POSTGRES_PASSWORD", "GC_API_DB_PASSWORD", "GC_REST_DB_PASSWORD", "GC_ADMIN_TOKEN"):
     lines.append(f"{name}={token_urlsafe(48)}")
-lines += ["WEB_PORT=4173", "REST_PORT=3000"]
+lines += ["WEB_PORT=4173"]
 fd = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
 with os.fdopen(fd, "w", encoding="utf-8") as handle:
     handle.write("\n".join(lines) + "\n")
