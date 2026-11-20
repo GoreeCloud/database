@@ -7,7 +7,7 @@ This is an independently developed GoreeCloud integration. It does **not** claim
 ## Implemented in this repository
 
 - PostgreSQL 17.12 persistent database, private container network and role-scoped bootstrap.
-- PostgREST 16.6 read-only sample REST endpoint, loopback-bound by default.
+- PostgREST 16.6 read-only sample REST endpoint, proxied through the loopback-only web console.
 - FastAPI management API with required bearer token, allowlisted `app` schema, table discovery, paginated row reads and parameterized inserts.
 - React/TypeScript browser console using the verified GoreeCloud UI alpha semantic palette (no copied stable design claims).
 - Kotlin/Jetpack Compose Android app for HTTPS management API table browsing, with in-memory credentials.
@@ -26,13 +26,13 @@ docker compose up -d --build
 docker compose ps
 ```
 
-The console is at http://127.0.0.1:4173 (or `WEB_PORT`). Copy `GC_ADMIN_TOKEN` privately from your local `.env` and enter it in the console; it is held in memory, not localStorage. The read-only demonstration REST endpoint is `http://127.0.0.1:3000/catalog` (only the seeded `app.catalog` table is granted anonymous SELECT). No PostgreSQL port is published.
+The console is at http://127.0.0.1:4173 (or `WEB_PORT`). Copy `GC_ADMIN_TOKEN` privately from your local `.env` and enter it in the console; it is held in memory, not localStorage. The read-only demonstration REST endpoint is `http://127.0.0.1:4173/rest/catalog` (only the seeded `app.catalog` table is granted anonymous SELECT). No PostgreSQL port is published.
 
 The sample catalog table is created **only on first database volume initialization**. Changing `.env` after initialization does not rotate database role passwords. Use explicit SQL role rotation and update secrets together; never erase persistent volumes to solve a credentials problem.
 
 ```sh
 docker compose logs --tail=60
-curl -fsS http://127.0.0.1:3000/catalog
+curl -fsS http://127.0.0.1:4173/rest/catalog
 # Never run docker compose down -v against data you want to preserve.
 ```
 
@@ -49,7 +49,7 @@ For web-only development: `cd apps/web && npm install && npm run dev`; Vite prox
 
 ## Security boundaries
 
-All published ports bind to **127.0.0.1**. Management endpoints require a randomly generated bearer secret. This **preview must not be exposed directly to the public Internet**. Android requires HTTPS: terminate TLS with approved authentication and secure network routing before mobile connections. Do not put the management token in source, query strings or third-party services. Back up PostgreSQL volumes before important changes, rehearse restores in isolation and follow [SECURITY.md](SECURITY.md). Do not use with sensitive or irreplaceable data until authentication, monitoring, restore testing and operational hardening pass.
+The only published port is the web console on **127.0.0.1**, routing REST through `/rest/` and management through `/api/`. Management endpoints require a randomly generated bearer secret. This **preview must not be exposed directly to the public Internet**. Android requires HTTPS: terminate TLS with approved authentication and secure network routing before mobile connections. Do not put the management token in source, query strings or third-party services. Back up PostgreSQL volumes before important changes, rehearse restores in isolation and follow [SECURITY.md](SECURITY.md). Do not use with sensitive or irreplaceable data until authentication, monitoring, restore testing and operational hardening pass.
 
 ## Integrated platform systems
 

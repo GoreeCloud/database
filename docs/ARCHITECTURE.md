@@ -1,35 +1,37 @@
 # Architecture and trust boundaries
 
 ```text
-Browser (loopback) -----> web/nginx:8080 ----- /api/ ----> FastAPI
-                                                          |
-                                                          | gc_api non-superuser
-                                                          v
-                                                     PostgreSQL 17
-                                                          ^
-                                                          | gc_rest -> gc_anon (read-only)
-Local REST client ------> PostgREST:3000 -----------------/
-Android (HTTPS only) --> externally authenticated TLS gateway --> /api/ (proposed, NOT deployed)
+Browser (127.0.0.1) --> web/nginx:8080 -- /api/* -----> FastAPI:8000
+                              |                           | gc_api
+                              | /rest/*                    v
+                              +-----------> PostgREST    PostgreSQL:5432
+                                          gc_rest            ^
+                                            |                 |
+                                            +-----gc_anon-----+
+Android (HTTPS) --> separately approved identity-aware TLS gateway --> web /api
 ```
 
-Current network is Docker Compose `internal:true`; only web and PostgREST bind `127.0.0.1`. Database data persists in named volume `pg_data`. `GC_ADMIN_TOKEN` gates the management API; database roles differ for API, REST and privileged bootstrap. REST anonymous role has only SELECT for the non-sensitive seeded catalog, never arbitrary user tables.
+The **only host-published port** is the web console, bound by default to `127.0.0.1:4173`. `/rest/catalog` is the explicitly public read-only demo endpoint via nginx; `/api/v1/*` requires the administration bearer token. There are two Docker networks: isolated `data` (`internal:true`) for Postgres, API, PostgREST and nginx, and host-facing `access` for nginx only. The databases/services have no directly host-published ports; nginx on `access` is not an internet-ready edge gateway. Any external access, particularly Android, requires a separately reviewed HTTPS and authenticated proxy.
+
+Database data persists in named volume `pg_data`. The `GC_ADMIN_TOKEN` is the shared management secret, *not* a user identity system. Database roles differ for privileged first boot, `gc_api` for app-table writes, and `gc_rest` -> `gc_anon` for read-only sample-table access.
 
 ## API contract (preview)
 
-- `GET /healthz` — process liveness, unauthenticated; not a full DB readiness guarantee.
-- `GET /v1/tables` — list user tables in `app` schema.
-- `GET /v1/tables/app/{table}/rows?limit=25&offset=0` — read first 1–100 rows, no caller SQL.
-- `POST /v1/tables/app/{table}/rows` — insert flat JSON object using bound parameters; DB constraints enforce integrity.
+- `GET /api/healthz` — process liveness only, unauthenticated; not a full DB readiness guarantee.
+- `GET /api/v1/tables` — list user tables in `app` schema.
+- `GET /api/v1/tables/app/{table}/rows?limit=25&offset=0` — read first 1–100 rows per page, no caller SQL.
+- `POST /api/v1/tables/app/{table}/rows` — insert a flat JSON object using bound parameters; DB constraints enforce integrity.
+- `GET /rest/catalog` — anonymous SELECT on the intentionally non-sensitive seeded `app.catalog` table only.
 
-`Authorization: Bearer <GC_ADMIN_TOKEN>` is mandatory for `/v1/*`. The `app` schema only is permitted. Errors intentionally omit database traces and credentials. HTTPS for mobile is a **deployment dependency**, not bundled by this stack.
+`Authorization: Bearer <GC_ADMIN_TOKEN>` is mandatory for `/api/v1/*`. The `app` schema only is permitted. Errors intentionally omit SQL traces and credentials. HTTPS for mobile remains a **deployment dependency**, not bundled by this stack.
 
 ## Roadmap
 
-1. CI validation, secured branch workflow and real local container integration tests.
-2. Per-user OIDC identity via GoreeCloud Identity (or a reviewed GoTrue integration), tenant-aware PostgreSQL RLS.
-3. Object storage integration using SeaweedFS S3 with object ACLs, malware policy and private buckets.
-4. Realtime via PostgreSQL logical decoding and a reviewed streaming service (no unrestricted replication slots).
-5. Edge functions sandbox, migrations tooling, backups, tested restore, metrics and structured audit log.
-6. Signed Android artifact, real device tests, accessible design review, production gateway hardening and remote access gates.
+1. Real local Compose smoke, secured branch workflow and reproducible images.
+2. Per-user OIDC identity via GoreeCloud Identity or a reviewed GoTrue integration; project-scoped authorization and PostgreSQL RLS.
+3. Object storage integration with SeaweedFS S3, private bucket ACLs and malware/retention policy.
+4. Realtime via PostgreSQL logical decoding with scoped subscriptions and controlled replication-slot lifetime.
+5. Edge functions sandbox, migrations tooling, backups, tested restore, metrics and audit logs.
+6. Signed Android artifact, real device tests, accessibility QA and production gateway hardening.
 
 Deployment must not be presented as production-ready until these gates are fulfilled.
