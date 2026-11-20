@@ -1,0 +1,9 @@
+GoreeCloud Database
+Copyright 2026 GoreeCloud contributors
+
+This project includes original GoreeCloud source code and integration configuration,
+licensed under Apache License 2.0.
+
+Dependencies and independently distributed service images remain owned by their
+upstream copyright holders and carry their respective licenses. See
+docs/THIRD_PARTY.md. This notice does not relicense any upstream work.
