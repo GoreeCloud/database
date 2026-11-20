@@ -5,7 +5,7 @@ set -eu
 BASE="http://127.0.0.1:${WEB_PORT:-4173}"
 REST="http://127.0.0.1:${REST_PORT:-3000}"
 ready=0
-for attempt in $(seq 1 50); do
+for attempt in $(seq 1 20); do
     if curl --fail --silent --output /dev/null "$BASE/api/healthz" &&
        curl --fail --silent --output /dev/null "$REST/catalog"; then
         ready=1
@@ -15,6 +15,10 @@ for attempt in $(seq 1 50); do
 done
 if [ "$ready" -ne 1 ]; then
     echo "Stack did not become healthy in the smoke-test window" >&2
+    for target in "$BASE/api/healthz" "$REST/catalog"; do
+        result=$(curl --silent --max-time 3 --output /dev/null --write-out "%{http_code}" "$target" || true)
+        echo "$target HTTP $result (000 = transport unavailable)" >&2
+    done
     exit 1
 fi
 status=$(curl --silent --output /dev/null --write-out '%{http_code}' "$BASE/api/v1/tables")
