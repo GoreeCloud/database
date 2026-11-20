@@ -1,6 +1,7 @@
 """Authenticated management API; not a general-purpose SQL execution endpoint."""
 from __future__ import annotations
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.encoders import jsonable_encoder
@@ -11,12 +12,15 @@ from . import store
 from .security import require_admin, require_configuration, check_schema, check_identifier
 
 log = logging.getLogger("goreecloud.database")
-app = FastAPI(title="GoreeCloud Database", version="0.1.0", docs_url=None, redoc_url=None, openapi_url=None)
 
 
-@app.on_event("startup")
-def ensure_configured() -> None:
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
     require_configuration()
+    yield
+
+
+app = FastAPI(title="GoreeCloud Database", version="0.1.0", docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
 
 
 @app.middleware("http")

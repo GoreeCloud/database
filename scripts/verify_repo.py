@@ -4,7 +4,12 @@ from pathlib import Path
 import re
 
 root = Path(__file__).resolve().parent.parent
-assert not (root / ".env").is_file(), "Do not execute repository verification with a real secrets file in repo root"
+# A generated local .env is expected, but it must never be tracked in Git.
+if (root / ".git").is_dir():
+    from subprocess import DEVNULL, run
+    tracked = run(["git", "ls-files", "--error-unmatch", ".env"],
+                  cwd=root, stdout=DEVNULL, stderr=DEVNULL, check=False)
+    assert tracked.returncode != 0, "A secrets file .env is tracked in Git"
 expected = [
     "README.md", "LICENSE", "SECURITY.md", ".github/workflows/ci.yml",
     "apps/api/gc_database/main.py", "apps/web/src/App.tsx",

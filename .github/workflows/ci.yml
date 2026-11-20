@@ -53,6 +53,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: python3 scripts/init_env.py
+      - run: python3 scripts/verify_repo.py
       - run: docker compose config --quiet
       - run: test -f .env && ! git ls-files --error-unmatch .env
   integration:
