@@ -206,6 +206,17 @@ python3 scripts/object_deletion_smoke.py --disposable
 - **Verification:** viewer deletion denied, explicit confirmation and expected SHA-256 required, one-row DELETE returns 204, subsequent GET returns 404, metadata-only DELETE audit event verified.
 - **Limit:** no soft-delete, per-user object ownership or erasure from backups/WAL. See [object deletion runbook](OBJECT_DELETION.md).
 
+## Read-only SQL migration source integrity check
+
+```sh
+python3 scripts/check_migrations.py
+python3 scripts/check_migrations.py --json
+```
+
+- **Risk:** read-only; does not connect to a database, apply SQL, start containers, modify a manifest or read secrets. JSON reports source-only checksums, **not** applied migration versions.
+- **Verification:** protected CI asserts SHA256 manifest entries, contiguous order and exact fresh-volume bootstrap calls. Changed SQL requires a new reviewed migration and a reviewed manifest update.
+- **Limit:** an existing volume still needs separately verified migration state, backups, SQL review, explicit authorized `--apply` actions and rollback. See [migration integrity runbook](MIGRATION_INTEGRITY.md).
+
 ## Backup and isolated recovery drill
 
 ```sh

@@ -1,0 +1,12 @@
+{
+  "format": "goreecloud-database-migrations-v1",
+  "sha256": {
+    "002-readonly.sql": "55a25a7834dd367971fd055fcf291b1808f11ffe552e2952744b57cf3684bda5",
+    "003-catalog-events.sql": "9ab13f21fdba84fbe023ff2160b5a3c67f18a11c4de4eac26e59789fecb12d3e",
+    "004-small-objects.sql": "de1af4864c3c49bdf3680da8798a061c0a39d92e14c41bdf601378c154eb7879",
+    "005-object-quota.sql": "bc56f3ff2963ebf38474f4f2086186003a711f8ea3f88627764973b031c4c07c",
+    "006-audit-metadata.sql": "ba68d5290ab393483bd11006b907a898c699c05e0f2859a4a922f3772290e61a",
+    "007-personal-notes-rls.sql": "c84c2aaac8cea0f11f6b96a39d61ea1726e8f86e98dd153a0725edc45e6e1ab0",
+    "008-small-object-delete.sql": "9aec782b8a3dcf32f22142fd2d5e9c6212e63cc62559848579b1b7db4fd55ac0"
+  }
+}
