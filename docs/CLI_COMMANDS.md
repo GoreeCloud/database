@@ -106,6 +106,24 @@ sh scripts/apply_small_object_migration.sh --apply
 - **Verification:** inspect role permissions, trigger event output and small-object read/write restrictions. Verify protected CI smoke.
 - **Rollback:** there is no automatic destructive reverse migration. Restore safely using the product's independently verified recovery plan. Do not drop roles or tables as a reflexive rollback.
 
+### Aggregate small-object quota migration
+
+The developer preview caps the private small-object schema at **512 objects / 128 MiB combined content** with a transactional PostgreSQL trigger.
+
+```sh
+# No-action usage check:
+sh scripts/apply_object_quota_migration.sh
+# After independently verified backup, schema review and correct target approval:
+sh scripts/apply_object_quota_migration.sh --apply
+
+# Only on an independently verified disposable CI stack:
+sh scripts/quota_smoke.sh --disposable
+```
+
+- **Risk:** quota migration changes database trigger behavior; requires reviewed credentials, target/backup verification and a rollback plan. The disposable smoke performs inserts inside a rolled-back transaction and must **never** run on production.
+- **Verification:** CI validates the 513th small-object insertion is rejected by `gc_storage_total_quota`; the database retains records unchanged after rollback. This is global safety, not a tenant or per-user quota.
+- **Limits:** no production storage monitoring, quota enforcement for PostgreSQL WAL overhead, retention/deletion or object encryption certification.
+
 ## Backup and isolated recovery drill
 
 ```sh

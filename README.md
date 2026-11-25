@@ -9,7 +9,7 @@ This is an independently developed GoreeCloud integration. It does **not** claim
 - PostgreSQL 17.12 persistent database, private container network, role-scoped bootstrap and separate API liveness/readiness probes with Docker Compose health reporting.
 - PostgREST 16.6 read-only sample REST endpoint, proxied through the loopback-only web console.
 - Authenticated, bounded PostgreSQL LISTEN/NOTIFY SSE stream for metadata-only `app.catalog` changes; React refreshes the catalog view on events, Android supports manual refresh.
-- Private, authenticated small-object API in a distinct PostgreSQL schema, with a strict 1 MiB per-object limit, safe download headers and SHA256 validation. This is **not S3-compatible storage**.
+- Private, authenticated small-object API in a distinct PostgreSQL schema, with strict 1 MiB per-object and [512-object / 128 MiB total quotas](docs/OBJECT_QUOTA.md), safe download headers and SHA256 validation. This is **not S3-compatible storage**.
 - FastAPI management API with distinct administrator and read-only bearer tokens, separate PostgreSQL roles, allowlisted `app` schema, table discovery, read-only column/primary-key/index inspection, bounded spreadsheet-safe [CSV page export](docs/CSV_EXPORT.md), paginated row reads and parameterized inserts.
 - React/TypeScript browser console using the verified GoreeCloud UI alpha semantic palette, including safe current-page CSV export, schema inspection and authenticated small-object browsing, bounded administrator upload and download.
 - Kotlin/Jetpack Compose Android app for HTTPS management API table browsing and private small-object listing/saving via Android's Storage Access Framework, with in-memory credentials.
@@ -48,6 +48,10 @@ For web-only development: `cd apps/web && npm install && npm run dev`; Vite prox
 - `apps/android`: Kotlin/Jetpack Compose Android management client.
 - `scripts`: local secret setup, explicit read-role/catalog-event migrations, guarded logical backup and isolated restore drill. See [access upgrade](docs/READ_ONLY_ACCESS.md), [realtime preview](docs/REALTIME_PREVIEW.md), [small-object storage](docs/SMALL_OBJECTS.md), [web/Android object clients](docs/OBJECT_CLIENTS.md), and [recovery runbook](docs/BACKUP_AND_RECOVERY.md).
 - `docs`: architecture, security, threat modeling, roadmap, dependency and licensing reviews, recovery limitations, plus the [source CLI command runbook](docs/CLI_COMMANDS.md). Canonical command references are governed in Google Drive `GoreeCloud/CLI Commands/`.
+
+## Dependency update governance
+
+The [dependency review runbook](docs/SUPPLY_CHAIN.md) describes weekly, PR-only version-update proposals for the Python API, React web app, Android Gradle, Docker and GitHub Actions. Changes still require protected CI and review; no source update auto-deploys or certifies production readiness.
 
 ## Security boundaries
 
