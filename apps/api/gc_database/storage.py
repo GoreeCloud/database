@@ -65,6 +65,21 @@ def save_object(filename: str, media_type: str, payload: bytes) -> dict[str, Any
         raise
 
 
+def delete_object(raw_id: str, expected_sha256: str) -> None:
+    """Delete exactly one matching object and checksum, never a path or range."""
+    object_id = parse_object_id(raw_id)
+    if not re.fullmatch(r"[0-9a-f]{64}", expected_sha256):
+        raise HTTPException(status_code=400, detail="Expected SHA-256 must be 64 lowercase hex digits")
+    with connection() as db, db.cursor() as cur:
+        cur.execute(
+            "DELETE FROM gc_storage.objects WHERE id = %s AND sha256 = %s RETURNING id",
+            (object_id, expected_sha256),
+        )
+        deleted = cur.fetchone()
+    if deleted is None:
+        raise HTTPException(status_code=404, detail="Object missing or checksum changed")
+
+
 def list_objects(limit: int, offset: int) -> list[dict[str, Any]]:
     with connection(read_only=True) as db, db.cursor() as cur:
         cur.execute(
