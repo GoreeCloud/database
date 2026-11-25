@@ -24,7 +24,7 @@ Operator-configured OIDC (see [OIDC verifier](OIDC_READER.md)) is mandatory for 
 | `GET /api/v1/me/notes?limit=25&offset=0` | `goreecloud.database.read` | Returns only the OIDC subject's rows, 1–50 per page |
 | `POST /api/v1/me/notes` | **Both** `goreecloud.database.read` and `goreecloud.database.write` | Inserts title+content only; subject is taken from signature-verified JWT, never JSON |
 
-Importantly, an OIDC token with both scopes **still maps to reader** for all existing global catalog/attachment APIs. It cannot call their administrative writes or inspect the audit metadata. The new `write` scope is not an administrator role.
+Importantly, signed OIDC users now default to a **personal** session and **cannot read** the shared catalog, attachments, CSV exports or SSE endpoints. Only an explicit operator `GC_OIDC_GLOBAL_READ_ENABLED=true` setting restores legacy global reader access. Even then, note-write scope is not a platform administrator role. See [OIDC access boundaries](OIDC_ACCESS_BOUNDARIES.md).
 
 ## First installation and migration
 

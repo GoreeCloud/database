@@ -13,7 +13,7 @@ from . import store, storage, personal, audit
 from .exports import export_table_csv
 from .realtime import open_catalog_event_stream
 from .security import (
-    current_scope, require_admin, require_admin_view, require_read,
+    current_scope, session_scope, require_admin, require_admin_view, require_read,
     require_personal_read, require_personal_write, require_configuration,
     check_schema, check_identifier,
 )
@@ -62,7 +62,9 @@ def readiness() -> dict[str, str]:
 
 
 @app.get("/v1/session")
-def session(scope: str = Depends(current_scope)):
+def session(scope: str = Depends(session_scope)):
+    if scope == "personal":
+        return {"scope": "personal", "permissions": ["personal.read"]}
     return {"scope": scope, "permissions": ["read", "write"] if scope == "admin" else ["read"]}
 
 

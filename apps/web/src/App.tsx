@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import SchemaPanel from './SchemaPanel'
 import ObjectPanel from './ObjectPanel'
 import AuditPanel from './AuditPanel'
@@ -33,7 +33,8 @@ function display(value: unknown): string {
 export default function App() {
   const [entry, setEntry] = useState('')
   const [token, setToken] = useState('')
-  const [scope, setScope] = useState<'unknown' | 'admin' | 'reader'>('unknown')
+  const [scope, setScope] = useState<'unknown' | 'admin' | 'reader' | 'personal'>('unknown')
+  const sessionGeneration = useRef(0)
   const [tables, setTables] = useState<Table[]>([])
   const [selected, setSelected] = useState<Table | null>(null)
   const [data, setData] = useState<Rows | null>(null)
@@ -44,29 +45,49 @@ export default function App() {
   const [insertOpen, setInsertOpen] = useState(false)
   const [payload, setPayload] = useState('{"slug":"example","description":"Created in GoreeCloud Database"}')
 
-  useEffect(() => {
-    if (!token) { setScope('unknown'); return }
-    let active = true
-    setScope('unknown')
-    api<{ scope: 'admin' | 'reader' }>('/v1/session', token)
-      .then(result => { if (active) setScope(result.scope === 'admin' ? 'admin' : 'reader') })
-      .catch(() => { if (active) setScope('unknown') })
-    return () => { active = false }
-  }, [token])
-
   const loadTables = useCallback(async (currentToken: string) => {
+    const generation = sessionGeneration.current
     setLoading(true)
     setMessage('')
     try {
       const result = await api<{ tables: Table[] }>('/v1/tables', currentToken)
+      if (sessionGeneration.current !== generation) return
       setTables(result.tables)
       setSelected(previous => result.tables.find(t => t.name === previous?.name) ?? result.tables[0] ?? null)
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to load database')
+      if (sessionGeneration.current === generation)
+        setMessage(error instanceof Error ? error.message : 'Unable to load database')
     } finally {
-      setLoading(false)
+      if (sessionGeneration.current === generation) setLoading(false)
     }
   }, [])
+
+  // Session inspection is intentionally separate from shared table permissions.
+  // Personal-only OIDC identities do not request /v1/tables or object endpoints.
+  useEffect(() => {
+    if (!token) { setScope('unknown'); return }
+    let active = true
+    setScope('unknown')
+    void api<{ scope: 'admin' | 'reader' | 'personal' }>('/v1/session', token)
+      .then(result => {
+        if (!active) return
+        setScope(result.scope)
+        if (result.scope === 'personal') {
+          setTables([])
+          setSelected(null)
+          setData(null)
+          setLoading(false)
+        } else {
+          void loadTables(token)
+        }
+      })
+      .catch(() => {
+        if (!active) return
+        setScope('unknown')
+        setMessage('Invalid credentials or unavailable session. Reconnect to retry.')
+      })
+    return () => { active = false }
+  }, [token, loadTables])
 
   useEffect(() => {
     if (!selected || !token || selected.name !== 'catalog') return
@@ -115,10 +136,15 @@ export default function App() {
   function connect(event: FormEvent) {
     event.preventDefault()
     if (!entry.trim()) return
+    sessionGeneration.current += 1
     setToken(entry.trim())
+    setScope('unknown')
     setEntry('')
     setOffset(0)
-    void loadTables(entry.trim())
+    setTables([])
+    setSelected(null)
+    setData(null)
+    setMessage('')
   }
 
   async function addRow(event: FormEvent) {
@@ -163,6 +189,7 @@ export default function App() {
   }
 
   function disconnect() {
+    sessionGeneration.current += 1
     setToken('')
     setScope('unknown')
     setInsertOpen(false)
@@ -178,15 +205,41 @@ export default function App() {
       <div className="logo-mark" aria-hidden="true">G</div>
       <p className="eyebrow">GOREECLOUD · SELF-HOSTED</p>
       <h1>Database control, without the cloud dependency.</h1>
-      <p className="muted">Connect with the generated administrator or viewer token. The viewer token cannot insert rows. This preview does not store credentials on disk.</p>
+      <p className="muted">Connect using a generated shared administrator/viewer token or a manually provided, verified OIDC access token. Personal-only OIDC identities cannot access shared tables or objects. Tokens remain in memory.</p>
       <form onSubmit={connect} className="stack">
-        <label htmlFor="token">Admin or read-only token</label>
-        <input autoFocus id="token" type="password" autoComplete="off" value={entry} onChange={e => setEntry(e.target.value)} placeholder="Paste GC_ADMIN_TOKEN or GC_READ_TOKEN" />
+        <label htmlFor="token">Shared management or signed OIDC token</label>
+        <input autoFocus id="token" type="password" autoComplete="off" value={entry} onChange={e => setEntry(e.target.value)} placeholder="Paste the approved bearer token" />
         <button type="submit" disabled={!entry.trim()}>Connect to database</button>
       </form>
       <p className="hint">Local development preview · Never expose this console directly to the Internet.</p>
     </section>
   </main>
+
+  // Do not mount the generic table or object browser before authorization.
+  if (scope === 'unknown') return <main className="auth-shell">
+    <section className="auth-card" aria-live="polite">
+      <p className="eyebrow">GOREECLOUD · AUTHORIZATION</p>
+      <h1>Verifying access</h1>
+      <p className="muted">{message || 'Checking your access scope against the local API.'}</p>
+      <button className="secondary" onClick={disconnect}>Disconnect and retry</button>
+    </section>
+  </main>
+
+  if (scope === 'personal') return <div className="layout">
+    <main className="content">
+      <header className="topbar"><span>GoreeCloud Database / Personal workspace</span><span className="preview-pill">OIDC · PERSONAL ONLY</span></header>
+      <div className="main-inner">
+        <div className="heading-row">
+          <div><p className="eyebrow">PRIVATE · SUBJECT-ISOLATED</p><h1>Your personal notes</h1>
+            <p className="muted">This access token cannot browse shared application tables, CSV exports or attachments. PostgreSQL RLS enforces note ownership.</p>
+          </div>
+          <div className="actions"><button className="secondary" onClick={disconnect}>Disconnect and clear notes</button></div>
+        </div>
+        <PersonalNotesPanel token={token} />
+        <p className="footnote">Manual token entry · No saved login · Not a production sign-in flow.</p>
+      </div>
+    </main>
+  </div>
 
   return <div className="layout">
     <aside className="sidebar">
@@ -204,7 +257,7 @@ export default function App() {
     <main className="content">
       <header className="topbar"><span>Workspace <span className="chevron">/</span> app <span className="chevron">/</span> {selected?.name ?? 'Tables'}</span><span className="preview-pill">DEVELOPMENT PREVIEW</span></header>
       <div className="main-inner">
-        <div className="heading-row"><div><p className="eyebrow">POSTGRESQL / SCHEMA EXPLORER</p><h1>{selected?.name ?? 'Your database'}</h1><p className="muted">Inspect and manage your application data with parameterized operations.</p></div><div className="actions"><button className="secondary" onClick={() => { if (selected) setSelected({ ...selected }); else void loadTables(token) }} disabled={loading}>↻ Refresh</button><button className="secondary" onClick={() => void downloadCsvPage()} disabled={!selected || loading || scope === 'unknown'}>Export page CSV</button><button onClick={() => setInsertOpen(open => !open)} disabled={!selected || scope !== 'admin'}>{scope === 'reader' ? 'Read-only access' : '+ Insert row'}</button></div></div>
+        <div className="heading-row"><div><p className="eyebrow">POSTGRESQL / SCHEMA EXPLORER</p><h1>{selected?.name ?? 'Your database'}</h1><p className="muted">Inspect and manage your application data with parameterized operations.</p></div><div className="actions"><button className="secondary" onClick={() => { if (selected) setSelected({ ...selected }); else void loadTables(token) }} disabled={loading}>↻ Refresh</button><button className="secondary" onClick={() => void downloadCsvPage()} disabled={!selected || loading}>Export page CSV</button><button onClick={() => setInsertOpen(open => !open)} disabled={!selected || scope !== 'admin'}>{scope === 'reader' ? 'Read-only access' : '+ Insert row'}</button></div></div>
         {message && <div role="status" className="alert">{message} <button className="dismiss" onClick={() => setMessage('')}>Dismiss</button></div>}
         <div className="stat-grid"><div className="stat"><span>Tables available</span><strong>{tables.length}</strong><small>App schema</small></div><div className="stat"><span>Page size</span><strong>25</strong><small>Rows per request</small></div><div className="stat"><span>Connection</span><strong className="connected"><span className="status-dot" /> Secured</strong><small>{scope === 'admin' ? 'Admin · read/write' : scope === 'reader' ? 'Viewer · read-only' : 'Verifying access…'}</small></div></div>
         {insertOpen && scope === 'admin' && <form className="insert-panel" onSubmit={addRow}><h2>Insert JSON row</h2><p className="muted">Flat JSON keys must match existing columns. Database constraints remain authoritative.</p><textarea aria-label="JSON row" spellCheck={false} value={payload} onChange={e => setPayload(e.target.value)} rows={4}/><button type="submit">Insert row</button></form>}
@@ -218,7 +271,7 @@ export default function App() {
         </section>
         {selected && <SchemaPanel token={token} schema={selected.schema} table={selected.name} />}
         <ObjectPanel token={token} scope={scope} />
-        {scope !== 'unknown' && <PersonalNotesPanel token={token} />}
+        <PersonalNotesPanel token={token} />
         {scope === 'admin' && <AuditPanel token={token} />}
         <p className="footnote">GoreeCloud UI alpha palette · No public hosting · Data remains on your configured self-hosted database.</p>
       </div>

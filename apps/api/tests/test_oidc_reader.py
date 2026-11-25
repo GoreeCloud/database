@@ -36,6 +36,8 @@ def configure(monkeypatch):
     monkeypatch.setenv("GC_OIDC_ISSUER", ISSUER)
     monkeypatch.setenv("GC_OIDC_AUDIENCE", AUDIENCE)
     monkeypatch.setenv("GC_OIDC_JWKS_URL", JWKS)
+    # Legacy global-reader mapping must now be an explicit operator opt-in.
+    monkeypatch.setenv("GC_OIDC_GLOBAL_READ_ENABLED", "true")
 
 
 def signed(key, **overrides):
@@ -133,6 +135,7 @@ def test_jwks_url_must_share_secure_issuer_origin_and_path(monkeypatch, invalid)
 
 def test_disabled_oidc_never_attempts_fetch(monkeypatch, key):
     configure(monkeypatch)
+    monkeypatch.setenv("GC_OIDC_GLOBAL_READ_ENABLED", "false")
     for label in ("GC_OIDC_ISSUER", "GC_OIDC_AUDIENCE", "GC_OIDC_JWKS_URL"):
         monkeypatch.delenv(label, raising=False)
     with patch("gc_database.oidc._client") as client:
