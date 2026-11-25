@@ -42,6 +42,13 @@ if [ "$status" != "401" ]; then
     echo "Viewer token INSERT returned HTTP $status (expected 401)" >&2
     exit 1
 fi
+curl --fail --silent --show-error "$BASE/api/v1/tables/app/catalog/export.csv?limit=25" -H "Authorization: Bearer $GC_READ_TOKEN" |
+    python3 -c 'import csv,sys; rows=list(csv.DictReader(sys.stdin)); assert any(row["slug"]=="welcome" for row in rows), "CSV export missing welcome row"'
+status=$(curl --silent --output /dev/null --write-out '%{http_code}' "$BASE/api/v1/tables/app/catalog/export.csv")
+if [ "$status" != "401" ]; then
+    echo "Anonymous CSV export returned HTTP $status (expected 401)" >&2
+    exit 1
+fi
 curl --fail --silent --show-error "$BASE/api/v1/tables/app/catalog/schema" -H "Authorization: Bearer $GC_READ_TOKEN" |
     python3 -c 'import json,sys; obj=json.load(sys.stdin); assert obj["schema"]=="app" and obj["table"]=="catalog"; assert any(c["name"]=="id" and c["primary_key"] for c in obj["columns"]); assert len(obj["indexes"])>=1'
 status=$(curl --silent --output /dev/null --write-out '%{http_code}' "$BASE/api/v1/tables/pg_catalog/pg_class/schema" -H "Authorization: Bearer $GC_ADMIN_TOKEN")
@@ -49,4 +56,4 @@ if [ "$status" != "404" ]; then
     echo "Catalog schema access must be restricted (got HTTP $status)" >&2
     exit 1
 fi
-echo "GoreeCloud Database smoke: OK (scoped roles, schema inspector + catalog REST)."
+echo "GoreeCloud Database smoke: OK (scoped roles, schema inspection, bounded CSV export and catalog REST)."

@@ -10,8 +10,8 @@ This is an independently developed GoreeCloud integration. It does **not** claim
 - PostgREST 16.6 read-only sample REST endpoint, proxied through the loopback-only web console.
 - Authenticated, bounded PostgreSQL LISTEN/NOTIFY SSE stream for metadata-only `app.catalog` changes; React refreshes the catalog view on events, Android supports manual refresh.
 - Private, authenticated small-object API in a distinct PostgreSQL schema, with a strict 1 MiB per-object limit, safe download headers and SHA256 validation. This is **not S3-compatible storage**.
-- FastAPI management API with distinct administrator and read-only bearer tokens, separate PostgreSQL read and write roles, allowlisted `app` schema, table discovery, read-only column/primary-key/index inspection, paginated row reads and parameterized inserts.
-- React/TypeScript browser console using the verified GoreeCloud UI alpha semantic palette, including read-only schema inspection, authenticated small-object browsing, bounded administrator upload and download.
+- FastAPI management API with distinct administrator and read-only bearer tokens, separate PostgreSQL roles, allowlisted `app` schema, table discovery, read-only column/primary-key/index inspection, bounded spreadsheet-safe [CSV page export](docs/CSV_EXPORT.md), paginated row reads and parameterized inserts.
+- React/TypeScript browser console using the verified GoreeCloud UI alpha semantic palette, including safe current-page CSV export, schema inspection and authenticated small-object browsing, bounded administrator upload and download.
 - Kotlin/Jetpack Compose Android app for HTTPS management API table browsing and private small-object listing/saving via Android's Storage Access Framework, with in-memory credentials.
 - Container configuration, secret generation, guarded custom-format PostgreSQL backup, network-isolated restore drill, tests, GitHub Actions, architecture and security guidance.
 
