@@ -11,6 +11,14 @@
 - **Host:** any separately authorized, reviewed local development or CI Docker host; this runbook is **not** authorization to deploy on the production VPS.
 - **Secrets:** use only the local untracked `.env` created by the setup helper. Never place secret values in Git, Drive, terminal history, screenshots, or publicly accessible logs. All examples below use placeholders.
 
+## Opt-in trusted OIDC verifier configuration
+
+The protected management API supports operator-controlled, read-only OIDC access-token verification as described in [OIDC reader runbook](OIDC_READER.md). The variables `GC_OIDC_ISSUER`, `GC_OIDC_AUDIENCE`, and **exactly one** of `GC_OIDC_JWKS_JSON` (trusted public key set, works without egress) or `GC_OIDC_JWKS_URL` (trusted same-origin HTTPS key endpoint, requires an approved egress path) are optional. A partial or invalid set causes startup failure. No access token or private signing key belongs in this document, CLI history, GitHub, or public logs.
+
+- **Safety:** configuration mutation requiring approval, trust assessment, backup and restart; static JWKS rotation requires explicit operator action. Do not relax the isolated network just for a test.
+- **Verification:** local ephemeral RSA-signature/claim tests and protected CI, not a live provider integration. All OIDC tokens have global reader scope only and cannot write or enforce PostgreSQL RLS.
+- **Rollback:** restore prior reviewed configuration, restart the API, verify legacy shared tokens still work and OIDC tokens fail after removing the trusted key.
+
 ## Operational liveness and readiness
 
 The local-only gateway provides two deliberately distinct, unauthenticated health probes:

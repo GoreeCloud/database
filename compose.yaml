@@ -35,6 +35,10 @@ services:
       DB_READ_PASSWORD: ${GC_READ_DB_PASSWORD:?}
       GC_ADMIN_TOKEN: ${GC_ADMIN_TOKEN:?}
       GC_READ_TOKEN: ${GC_READ_TOKEN:?}
+      GC_OIDC_ISSUER: ${GC_OIDC_ISSUER:-}
+      GC_OIDC_AUDIENCE: ${GC_OIDC_AUDIENCE:-}
+      GC_OIDC_JWKS_URL: ${GC_OIDC_JWKS_URL:-}
+      GC_OIDC_JWKS_JSON: ${GC_OIDC_JWKS_JSON:-}
     healthcheck:
       test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/readyz', timeout=5)"]
       interval: 15s
