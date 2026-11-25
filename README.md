@@ -64,6 +64,19 @@ GoreeCloud UI: alpha semantic tokens taken from verified `GoreeCloud/gc-ui` (not
 
 ## Open-source attribution
 
-First-party code is under [Apache License 2.0](LICENSE). Upstream components are **not copied or relicensed**. Their runtime images and package dependencies retain their original license terms; see [third-party components](docs/THIRD_PARTY.md). When shipping binaries/images, verify the exact artifact version, license notices and SBOM before distribution.
+First-party code is under [Apache License 2.0](LICENSE). The Android client includes an unmodified, MIT-licensed GoreeCloud UI Material 3 Expressive Compose adapter source snapshot (see [source provenance](apps/android/gc-ui-compose/UPSTREAM.md) and its retained `LICENSE`). Other runtime images and package dependencies retain their upstream licenses; see [third-party components](docs/THIRD_PARTY.md). When shipping binaries/images, verify the exact artifact version, license notices and SBOM before distribution.
 
 Contributions and security issues: see [SECURITY.md](SECURITY.md). Development status is tracked in GitHub, not inferred from this README.
+
+## Android design foundation
+
+The native Android client now uses a pinned, source-level GoreeCloud UI
+Material 3 Expressive theme with canonical light/dark semantic roles, four
+available accent families, and reduced-motion-aware native behavior. Dynamic
+wallpaper coloring is disabled by default. Android builds require SDK 37.1,
+Gradle 9.4.1 and JDK 17; the existing minSdk/targetSdk and authenticated
+HTTPS-only management model are retained. Personal notes are not removed
+or replaced by this UI integration.
+
+This is not a signed production APK, a physical-device accessibility
+acceptance, or an approved deployed database service.

@@ -1,6 +1,8 @@
 package com.goreecloud.database
 
 import android.os.Bundle
+import android.animation.ValueAnimator
+import com.goreecloud.ui.material3.GoreeCloudExpressiveTheme
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
@@ -12,7 +14,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -25,23 +26,14 @@ import java.net.URL
 import java.io.ByteArrayOutputStream
 import javax.net.ssl.HttpsURLConnection
 
-private val Canvas = Color(0xFF0D121D)
-private val Surface = Color(0xFF171D2A)
-private val Brand = Color(0xFFBFB8FF)
-private val OnBrand = Color(0xFF272057)
-private val SoftText = Color(0xFFCED5E5)
-
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            MaterialTheme(colorScheme = darkColorScheme(
-                primary = Brand,
-                onPrimary = OnBrand,
-                background = Canvas,
-                surface = Surface,
-                onSurface = Color(0xFFF2F4FB),
-            )) {
+            GoreeCloudExpressiveTheme(
+                dynamicWallpaperColors = false,
+                reduceMotion = !ValueAnimator.areAnimatorsEnabled()
+            ) {
                 DatabaseScreen()
             }
         }
@@ -279,10 +271,10 @@ private fun DatabaseScreen() {
     }
 
     Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
-        Text("GOREECLOUD · SELF-HOSTED", color = Brand, style = MaterialTheme.typography.labelSmall)
+        Text("GOREECLOUD · SELF-HOSTED", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall)
         Spacer(Modifier.height(12.dp))
         Text("Database", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
-        Text("Native management preview", color = SoftText, style = MaterialTheme.typography.bodyMedium)
+        Text("Native management preview", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
         Spacer(Modifier.height(20.dp))
         if (client == null) {
             OutlinedTextField(value = endpoint, onValueChange = { endpoint = it }, modifier = Modifier.fillMaxWidth(),
@@ -293,7 +285,7 @@ private fun DatabaseScreen() {
             Spacer(Modifier.height(16.dp))
             Button(onClick = { connect() }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Connect securely") }
             Spacer(Modifier.height(14.dp))
-            Text("Only HTTPS connections are permitted. Configure a trusted TLS gateway before connecting a phone. Credentials remain in memory.", color = SoftText)
+            Text("Only HTTPS connections are permitted. Configure a trusted TLS gateway before connecting a phone. Credentials remain in memory.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         } else {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text("app schema", style = MaterialTheme.typography.titleMedium)
@@ -356,7 +348,7 @@ private fun DatabaseScreen() {
                         Card(shape = RoundedCornerShape(18.dp)) {
                             Column(Modifier.padding(16.dp)) {
                                 columns.forEach { col ->
-                                    Text(col, color = Brand, style = MaterialTheme.typography.labelSmall)
+                                    Text(col, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall)
                                     Text(row[col] ?: "NULL", style = MaterialTheme.typography.bodyMedium)
                                     Spacer(Modifier.height(9.dp))
                                 }
