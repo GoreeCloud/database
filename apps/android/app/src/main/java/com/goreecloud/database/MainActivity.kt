@@ -111,6 +111,47 @@ internal class DatabaseClient(private val endpoint: String, private val secret: 
             connection.disconnect()
         }
     }
+
+    fun downloadCsvPage(table: String): ByteArray {
+        require(Regex("^[a-z_][a-z0-9_]{0,62}$").matches(table)) {
+            "Unsupported table identifier"
+        }
+        val connection = URL(base + "/v1/tables/app/" + table + "/export.csv?limit=25&offset=0")
+            .openConnection() as HttpsURLConnection
+        connection.connectTimeout = 8000
+        connection.readTimeout = 8000
+        connection.instanceFollowRedirects = false
+        connection.requestMethod = "GET"
+        connection.setRequestProperty("Authorization", "Bearer $secret")
+        connection.setRequestProperty("Accept", "text/csv")
+        connection.setRequestProperty("Cache-Control", "no-store")
+        try {
+            if (connection.responseCode !in 200..299) {
+                throw IllegalStateException("CSV export unavailable (HTTP ${connection.responseCode})")
+            }
+            if (!connection.contentType.orEmpty().startsWith("text/csv")) {
+                throw IllegalStateException("Unexpected CSV response type")
+            }
+            if (connection.contentLengthLong > 2_097_152L) {
+                throw IllegalStateException("CSV export exceeds 2 MiB")
+            }
+            val output = ByteArrayOutputStream()
+            connection.inputStream.use { stream ->
+                val buffer = ByteArray(8192)
+                while (true) {
+                    val count = stream.read(buffer)
+                    if (count < 0) break
+                    if (output.size() + count > 2_097_152) {
+                        throw IllegalStateException("CSV export exceeds 2 MiB")
+                    }
+                    output.write(buffer, 0, count)
+                }
+            }
+            return output.toByteArray()
+        } finally {
+            connection.disconnect()
+        }
+    }
 }
 
 @Composable
@@ -244,6 +285,9 @@ private fun DatabaseScreen() {
                         Text("Inspect schema")
                     }
                 }
+                chosenTable?.let { name -> client?.let { active ->
+                    CsvExportButton(client = active, table = name)
+                } }
                 Spacer(Modifier.height(10.dp))
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     items(tableRows) { row ->
