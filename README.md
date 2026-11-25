@@ -46,7 +46,7 @@ For web-only development: `cd apps/web && npm install && npm run dev`; Vite prox
 - `apps/api`: authenticated control API.
 - `apps/web`: browser management console.
 - `apps/android`: Kotlin/Jetpack Compose Android management client.
-- `scripts`: local secret setup, explicit read-role/catalog-event migrations, guarded logical backup and isolated restore drill. See [access upgrade](docs/READ_ONLY_ACCESS.md), [realtime preview](docs/REALTIME_PREVIEW.md), [small-object storage](docs/SMALL_OBJECTS.md) and [web/Android object clients](docs/OBJECT_CLIENTS.md) and [recovery runbook](docs/BACKUP_AND_RECOVERY.md).
+- `scripts`: local secret setup, explicit read-role/catalog-event migrations, guarded logical backup and isolated restore drill. See [access upgrade](docs/READ_ONLY_ACCESS.md), [realtime preview](docs/REALTIME_PREVIEW.md), [small-object storage](docs/SMALL_OBJECTS.md), [web/Android object clients](docs/OBJECT_CLIENTS.md), and [recovery runbook](docs/BACKUP_AND_RECOVERY.md).
 - `docs`: architecture, threat model, roadmap, component licenses, recovery limitations.
 
 ## Security boundaries
