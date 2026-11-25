@@ -24,7 +24,7 @@ Database data persists in named volume `pg_data`. The `GC_ADMIN_TOKEN` is the sh
 - `POST /api/v1/objects?filename=...` — administrator-only binary upload, 1 MiB maximum; PostgreSQL enforces a global 512-object/128 MiB capacity bound with safe 507 responses for quota exhaustion.
 - `GET /api/v1/objects` — authenticated object metadata listing; `GET /api/v1/objects/{uuid}` returns checksum-verified attachment bytes under the shared viewer/admin token boundary. The objects table lives in separate private `gc_storage` schema, never the generic `app` or public PostgREST schemas.
 - `GET /api/v1/tables` — list user tables in `app` schema.
-- `GET /api/v1/tables/app/{table}/schema` — read-only `information_schema`/PostgreSQL catalog metadata: columns, types, nullability, defaults, primary keys and index definitions. No caller-authored SQL.
+- `GET /api/v1/tables/app/{table}/schema` — read-only `information_schema`/PostgreSQL catalog metadata: columns, types, nullability, defaults, primary keys and index definitions. Readable from the web console and native Android schema viewer; no caller-authored SQL.
 - `GET /api/v1/tables/app/{table}/rows?limit=25&offset=0` — read first 1–100 rows per page, no caller SQL.
 - `GET /api/v1/tables/app/{table}/export.csv?limit=100&offset=0` — authenticated, SELECT-only spreadsheet-safe CSV page; max 500 rows/100 columns/2 MiB. No cross-user privacy boundary or full snapshot consistency.
 - `POST /api/v1/tables/app/{table}/rows` — insert a flat JSON object using bound parameters; DB constraints enforce integrity.

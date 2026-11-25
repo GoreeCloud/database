@@ -111,6 +111,47 @@ internal class DatabaseClient(private val endpoint: String, private val secret: 
             connection.disconnect()
         }
     }
+
+    fun downloadCsvPage(table: String): ByteArray {
+        require(Regex("^[a-z_][a-z0-9_]{0,62}$").matches(table)) {
+            "Unsupported table identifier"
+        }
+        val connection = URL(base + "/v1/tables/app/" + table + "/export.csv?limit=25&offset=0")
+            .openConnection() as HttpsURLConnection
+        connection.connectTimeout = 8000
+        connection.readTimeout = 8000
+        connection.instanceFollowRedirects = false
+        connection.requestMethod = "GET"
+        connection.setRequestProperty("Authorization", "Bearer $secret")
+        connection.setRequestProperty("Accept", "text/csv")
+        connection.setRequestProperty("Cache-Control", "no-store")
+        try {
+            if (connection.responseCode !in 200..299) {
+                throw IllegalStateException("CSV export unavailable (HTTP ${connection.responseCode})")
+            }
+            if (!connection.contentType.orEmpty().startsWith("text/csv")) {
+                throw IllegalStateException("Unexpected CSV response type")
+            }
+            if (connection.contentLengthLong > 2_097_152L) {
+                throw IllegalStateException("CSV export exceeds 2 MiB")
+            }
+            val output = ByteArrayOutputStream()
+            connection.inputStream.use { stream ->
+                val buffer = ByteArray(8192)
+                while (true) {
+                    val count = stream.read(buffer)
+                    if (count < 0) break
+                    if (output.size() + count > 2_097_152) {
+                        throw IllegalStateException("CSV export exceeds 2 MiB")
+                    }
+                    output.write(buffer, 0, count)
+                }
+            }
+            return output.toByteArray()
+        } finally {
+            connection.disconnect()
+        }
+    }
 }
 
 @Composable
@@ -121,6 +162,7 @@ private fun DatabaseScreen() {
     var client by remember { mutableStateOf<DatabaseClient?>(null) }
     var tableNames by remember { mutableStateOf(listOf<String>()) }
     var showObjects by remember { mutableStateOf(false) }
+    var showSchema by remember { mutableStateOf(false) }
     var chosenTable by remember { mutableStateOf<String?>(null) }
     var columns by remember { mutableStateOf(listOf<String>()) }
     var tableRows by remember { mutableStateOf(listOf<Map<String, String>>()) }
@@ -146,6 +188,7 @@ private fun DatabaseScreen() {
                 tableNames = (0 until arr.length()).map { arr.getJSONObject(it).getString("name") }
                 chosenTable = null
                 showObjects = false
+                showSchema = false
             } catch (e: Exception) {
                 error = e.message ?: "Could not connect"
             } finally {
@@ -157,6 +200,7 @@ private fun DatabaseScreen() {
     fun loadTable(name: String) {
         val current = client ?: return
         chosenTable = name
+        showSchema = false
         busy = true
         error = ""
         scope.launch {
@@ -201,6 +245,7 @@ private fun DatabaseScreen() {
                     client = null
                     chosenTable = null
                     showObjects = false
+                    showSchema = false
                     tableNames = emptyList()
                     tableRows = emptyList()
                     error = ""
@@ -223,12 +268,26 @@ private fun DatabaseScreen() {
                         }
                     }
                 }
-            } else {
-                TextButton(onClick = { chosenTable = null }) { Text("← All tables") }
-                Text(chosenTable ?: "", style = MaterialTheme.typography.titleLarge)
-                TextButton(onClick = { chosenTable?.let { loadTable(it) } }, enabled = !busy) {
-                    Text("Refresh rows")
+            } else if (showSchema) {
+                val current = client
+                val table = chosenTable
+                if (current != null && table != null) {
+                    SchemaBrowser(client = current, table = table, onClose = { showSchema = false })
                 }
+            } else {
+                TextButton(onClick = { chosenTable = null; showSchema = false }) { Text("← All tables") }
+                Text(chosenTable ?: "", style = MaterialTheme.typography.titleLarge)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    TextButton(onClick = { chosenTable?.let { loadTable(it) } }, enabled = !busy) {
+                        Text("Refresh rows")
+                    }
+                    TextButton(onClick = { showSchema = true }, enabled = !busy) {
+                        Text("Inspect schema")
+                    }
+                }
+                chosenTable?.let { name -> client?.let { active ->
+                    CsvExportButton(client = active, table = name)
+                } }
                 Spacer(Modifier.height(10.dp))
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     items(tableRows) { row ->
