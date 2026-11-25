@@ -8,6 +8,7 @@ The FastAPI management API now enforces a deliberately small **30 successful adm
 - Both catalog row inserts and small-object uploads call the same existing `require_admin` dependency and consume the same bucket. Operations that later fail validation may still count because they consume application resources.
 - Unauthenticated and read-only callers cannot fill the administrator write bucket. Read routes, schema inspection, CSV downloads, and viewer object listing are not subject to this write quota.
 - No IP address, access token, user subject, request body or account identifier is stored or logged by the limiter.
+- OIDC-scoped personal note INSERTs are **not** covered by the shared-administrator write throttle; they have a separate database-enforced 100-notes-per-subject capacity limit, not a rate limit.
 - The default of 30/min is fixed in source for this preview. Restarts reset it. Each API worker/process maintains a separate bucket. There is no Redis dependency.
 
 ## What this does NOT do

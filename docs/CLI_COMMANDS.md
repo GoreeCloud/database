@@ -160,6 +160,22 @@ python3 scripts/admin_write_smoke.py --disposable
 - **Expected:** HTTP 429 Retry-After on excess admin writes while viewer reads continue.
 - **Limit:** per-process quota reset on restart, no user/tenant protection. See [write throttle runbook](WRITE_THROTTLE.md).
 
+## Isolated per-subject RLS notes migration
+
+```sh
+# Safe usage / preflight:
+sh scripts/apply_personal_rls_migration.sh
+# Only after independently verified backup, issuer policy and target authorization:
+sh scripts/apply_personal_rls_migration.sh --apply
+
+# Disposable CI database ONLY; inserts records and rolls them back:
+sh scripts/personal_rls_smoke.sh --disposable
+```
+
+- **Risk:** adds private PostgreSQL table, RLS policies and a quota trigger; this is a schema and policy mutation, not authorization to migrate existing sensitive tables. Inspect role grants, backups, policy SQL, current issuer and rollback before use.
+- **Verification:** RLS fails closed with no signed subject, isolates Alice and Bob, rejects forged-owner INSERT, and limits to 100 notes per subject. Test writes are rolled back.
+- **Limit:** a private preview notes table only; general app/object schemas retain existing shared-token behavior. See [RLS demonstration](PERSONAL_RLS.md).
+
 ## Backup and isolated recovery drill
 
 ```sh
