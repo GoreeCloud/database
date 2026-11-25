@@ -39,6 +39,7 @@ services:
       GC_OIDC_AUDIENCE: ${GC_OIDC_AUDIENCE:-}
       GC_OIDC_JWKS_URL: ${GC_OIDC_JWKS_URL:-}
       GC_OIDC_JWKS_JSON: ${GC_OIDC_JWKS_JSON:-}
+      GC_OIDC_GLOBAL_READ_ENABLED: ${GC_OIDC_GLOBAL_READ_ENABLED:-false}
     healthcheck:
       test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/readyz', timeout=5)"]
       interval: 15s

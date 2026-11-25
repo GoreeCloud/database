@@ -13,10 +13,10 @@
 
 ## Opt-in trusted OIDC verifier configuration
 
-The protected management API supports operator-controlled, read-only OIDC access-token verification as described in [OIDC reader runbook](OIDC_READER.md). The variables `GC_OIDC_ISSUER`, `GC_OIDC_AUDIENCE`, and **exactly one** of `GC_OIDC_JWKS_JSON` (trusted public key set, works without egress) or `GC_OIDC_JWKS_URL` (trusted same-origin HTTPS key endpoint, requires an approved egress path) are optional. A partial or invalid set causes startup failure. No access token or private signing key belongs in this document, CLI history, GitHub, or public logs.
+The protected API supports operator-controlled, signed OIDC access-token verification with **personal-note-only access by default** (see [OIDC access matrix](OIDC_ACCESS_BOUNDARIES.md)). `GC_OIDC_ISSUER`, `GC_OIDC_AUDIENCE`, and exactly one of `GC_OIDC_JWKS_JSON` (trusted public set, no egress) or `GC_OIDC_JWKS_URL` (reviewed same-origin HTTPS JWKS) are optional together. `GC_OIDC_GLOBAL_READ_ENABLED` is `false` by default; an explicit `true` opts into the legacy high-risk global reader scope. Invalid values or a `true` setting without configured OIDC fail startup. Never place access tokens or private signing keys in commands, documents or logs.
 
 - **Safety:** configuration mutation requiring approval, trust assessment, backup and restart; static JWKS rotation requires explicit operator action. Do not relax the isolated network just for a test.
-- **Verification:** local ephemeral RSA-signature/claim tests and protected CI, not a live provider integration. All OIDC tokens have global reader scope only and cannot write or enforce PostgreSQL RLS.
+- **Verification:** local ephemeral RSA-signature/claim tests and protected CI, not live provider acceptance. Default signed OIDC tokens can browse only their RLS-bound personal notes; explicit note-write scope permits owner-only INSERT/DELETE. Global shared reader capability requires `GC_OIDC_GLOBAL_READ_ENABLED=true` and is inappropriate for personal data.
 - **Rollback:** restore prior reviewed configuration, restart the API, verify legacy shared tokens still work and OIDC tokens fail after removing the trusted key.
 
 ## Native and web OIDC notes client verification

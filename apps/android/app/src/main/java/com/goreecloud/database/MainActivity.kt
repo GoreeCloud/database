@@ -209,6 +209,7 @@ private fun DatabaseScreen() {
     var tableNames by remember { mutableStateOf(listOf<String>()) }
     var showObjects by remember { mutableStateOf(false) }
     var showPersonal by remember { mutableStateOf(false) }
+    var personalOnly by remember { mutableStateOf(false) }
     var showSchema by remember { mutableStateOf(false) }
     var chosenTable by remember { mutableStateOf<String?>(null) }
     var columns by remember { mutableStateOf(listOf<String>()) }
@@ -224,20 +225,34 @@ private fun DatabaseScreen() {
             error = e.message ?: "Invalid endpoint"
             return
         }
-        client = next
+        // Avoid mounting the shared-table browser until authorization is verified.
         inputToken = ""
         busy = true
         error = ""
         scope.launch {
             try {
-                val result = withContext(Dispatchers.IO) { next.get("/v1/tables") }
-                val arr = result.getJSONArray("tables")
-                tableNames = (0 until arr.length()).map { arr.getJSONObject(it).getString("name") }
+                val session = withContext(Dispatchers.IO) { next.get("/v1/session") }
+                val authorizedScope = session.getString("scope")
+                if (authorizedScope == "personal") {
+                    personalOnly = true
+                    tableNames = emptyList()
+                    showPersonal = true
+                } else if (authorizedScope == "admin" || authorizedScope == "reader") {
+                    val result = withContext(Dispatchers.IO) { next.get("/v1/tables") }
+                    val arr = result.getJSONArray("tables")
+                    tableNames = (0 until arr.length()).map { arr.getJSONObject(it).getString("name") }
+                    personalOnly = false
+                    showPersonal = false
+                } else {
+                    throw IllegalStateException("Unexpected database authorization scope")
+                }
                 chosenTable = null
                 showObjects = false
-                showPersonal = false
                 showSchema = false
+                client = next
             } catch (e: Exception) {
+                client = null
+                personalOnly = false
                 error = e.message ?: "Could not connect"
             } finally {
                 busy = false
@@ -288,12 +303,14 @@ private fun DatabaseScreen() {
             Text("Only HTTPS connections are permitted. Configure a trusted TLS gateway before connecting a phone. Credentials remain in memory.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         } else {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("app schema", style = MaterialTheme.typography.titleMedium)
+                Text(if (personalOnly) "Private notes" else "app schema",
+                    style = MaterialTheme.typography.titleMedium)
                 TextButton(onClick = {
                     client = null
                     chosenTable = null
                     showObjects = false
                     showPersonal = false
+                    personalOnly = false
                     showSchema = false
                     tableNames = emptyList()
                     tableRows = emptyList()
@@ -303,7 +320,14 @@ private fun DatabaseScreen() {
             if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
             Spacer(Modifier.height(12.dp))
             if (showPersonal) {
-                client?.let { current -> PersonalNotesBrowser(client = current, onClose = { showPersonal = false }) }
+                client?.let { current -> PersonalNotesBrowser(client = current, onClose = {
+                    if (personalOnly) {
+                        client = null
+                        personalOnly = false
+                        tableNames = emptyList()
+                    }
+                    showPersonal = false
+                }) }
             } else if (showObjects) {
                 client?.let { current -> ObjectBrowser(client = current, onClose = { showObjects = false }) }
             } else if (chosenTable == null) {

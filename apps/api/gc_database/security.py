@@ -14,6 +14,14 @@ IDENTIFIER_RE = re.compile(r"^[a-z_][a-z0-9_]{0,62}$")
 SCHEMA = "app"
 
 
+def global_oidc_read_enabled() -> bool:
+    """Fail closed: signed personal identities have no global table/object ACL by default."""
+    value = os.environ.get("GC_OIDC_GLOBAL_READ_ENABLED", "false")
+    if value not in ("true", "false"):
+        raise RuntimeError("GC_OIDC_GLOBAL_READ_ENABLED must be exactly true or false")
+    return value == "true"
+
+
 def require_configuration() -> str:
     admin = os.environ.get("GC_ADMIN_TOKEN", "")
     read = os.environ.get("GC_READ_TOKEN", "")
@@ -26,7 +34,9 @@ def require_configuration() -> str:
     for key in ("DB_HOST", "DB_NAME", "DB_USER", "DB_PASSWORD", "DB_READ_USER", "DB_READ_PASSWORD"):
         if not os.environ.get(key):
             raise RuntimeError(f"{key} is required")
-    oidc_settings()  # Fail closed on partially configured external identity.
+    settings = oidc_settings()  # Fail closed on partially configured external identity.
+    if global_oidc_read_enabled() and settings is None:
+        raise RuntimeError("Global OIDC read opt-in requires fully configured signed OIDC verification")
     return admin
 
 
@@ -46,11 +56,24 @@ def current_scope(authorization: str | None = Header(default=None)) -> str:
         return "admin"
     if is_reader:
         return "reader"
-    # OIDC access tokens can ONLY receive the shared read-only capability.
-    # They cannot be upgraded to admin and do not confer per-tenant RLS.
-    if oidc_reader_authorized(candidate):
+    # A signed personal token is NOT a shared-table/object reader by default.
+    # Legacy global OIDC reader access requires explicit reviewed opt-in.
+    if global_oidc_read_enabled() and oidc_reader_authorized(candidate):
         return "reader"
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+
+
+def session_scope(authorization: str | None = Header(default=None)) -> str:
+    """Session discovery may recognize a personal-only identity, not grant table access."""
+    try:
+        return current_scope(authorization)
+    except HTTPException as exc:
+        if exc.status_code != status.HTTP_401_UNAUTHORIZED:
+            raise
+    subject = oidc_subject(_bearer(authorization), (READ_SCOPE,))
+    if subject is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+    return "personal"
 
 
 def require_admin(authorization: str | None = Header(default=None)) -> None:
