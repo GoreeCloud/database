@@ -46,11 +46,18 @@ def main() -> int:
         if started.returncode:
             raise RuntimeError("Could not launch isolated database")
         created = True
+        # The official PostgreSQL entrypoint starts a temporary bootstrap server
+        # before the final server. Do not restore into that short-lived process.
         ready = False
-        for _ in range(30):
+        consecutive_ready = 0
+        for _ in range(40):
             if run(["docker", "exec", name, "pg_isready", "-U", "postgres"]).returncode == 0:
-                ready = True
-                break
+                consecutive_ready += 1
+                if consecutive_ready >= 4:
+                    ready = True
+                    break
+            else:
+                consecutive_ready = 0
             time.sleep(1)
         if not ready:
             raise RuntimeError("Isolated database did not become ready")
@@ -71,7 +78,10 @@ def main() -> int:
         print(f"Restore verified in disposable, disconnected PostgreSQL {IMAGE}; container removed.")
         return 0
     except (OSError, RuntimeError) as exc:
-        print(f"Restore verification failed ({type(exc).__name__}); source database untouched.", file=sys.stderr)
+        # Only internally authored RuntimeError strings are displayed, never raw
+        # Docker output, SQL content, credentials or exception path details.
+        detail = str(exc) if isinstance(exc, RuntimeError) else type(exc).__name__
+        print(f"Restore verification failed: {detail}; source database untouched.", file=sys.stderr)
         return 1
     finally:
         if created:
