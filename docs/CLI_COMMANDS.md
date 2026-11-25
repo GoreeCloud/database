@@ -132,6 +132,22 @@ sh scripts/quota_smoke.sh --disposable
 - **Verification:** CI validates the 513th small-object insertion is rejected by `gc_storage_total_quota`; the database retains records unchanged after rollback. This is global safety, not a tenant or per-user quota.
 - **Limits:** no production storage monitoring, quota enforcement for PostgreSQL WAL overhead, retention/deletion or object encryption certification.
 
+## Governed metadata-audit migration and smoke
+
+```sh
+# Safe usage check (does not modify database):
+sh scripts/apply_audit_migration.sh
+# After independent backup validation and authorization of the exact target:
+sh scripts/apply_audit_migration.sh --apply
+
+# On an independently confirmed disposable stack only, with .env loaded:
+python3 scripts/audit_smoke.py
+```
+
+- **Risk:** audit migration changes PostgreSQL triggers and grants, and may briefly lock tables; review SQL, backups, change window and rollback.
+- **Verification:** CI checks catalog/small-object INSERT metadata, rejection of the viewer token, and fixed response fields.
+- **Limits:** two source tables only; no actor attribution, retention, tamper evidence or full Wardveil integration. See [audit runbook](AUDIT_METADATA.md).
+
 ## Disposable administrator write throttle verification
 
 ```sh
@@ -140,9 +156,9 @@ set -a; . ./.env; set +a
 python3 scripts/admin_write_smoke.py --disposable
 ```
 
-- **Risk:** state-changing; the script deliberately creates temporary catalog rows and tests a 30-per-minute admin write ceiling. It must not target real or irreplaceable records.
-- **Expected:** the API eventually returns HTTP 429 with Retry-After for admin writes; anonymous and reader writes remain unauthorized, while viewer reads remain available.
-- **Limit:** resets per process/restart, no per-user/tenant protection. See [write throttle runbook](WRITE_THROTTLE.md).
+- **Risk:** state-changing; intentionally inserts disposable catalog rows, never use on real/irreplaceable records.
+- **Expected:** HTTP 429 Retry-After on excess admin writes while viewer reads continue.
+- **Limit:** per-process quota reset on restart, no user/tenant protection. See [write throttle runbook](WRITE_THROTTLE.md).
 
 ## Backup and isolated recovery drill
 
