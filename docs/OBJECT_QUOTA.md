@@ -9,7 +9,7 @@ The dedicated PostgreSQL `gc_storage` schema now has an aggregate capacity guard
 - The existing 1 MiB per-object check remains in the table constraint and upload API.
 - The FastAPI upload operation maps only the named quota-check database violation to HTTP **507 Insufficient Storage**, without returning SQL or private data.
 - A viewer token has only SELECT on the private schema and cannot override database-enforced limits.
-- Existing records are **never deleted** by this migration. An existing volume already above the cap will retain its data but decline further object insertion until a separate authorized retention/deletion path exists.
+- Existing records are **never deleted** by this migration. An existing volume already above the cap will retain its data but decline further object insertion until an authorized administrator uses the separately gated [single-object deletion path](OBJECT_DELETION.md) after verifying the correct target and backups.
 
 These fixed caps are deliberately conservative and do not guarantee host-wide free space, quota isolation between users, encrypted storage, malware scanning, or safe production operation.
 

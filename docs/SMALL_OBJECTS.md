@@ -7,10 +7,10 @@ This intentionally provides a tiny, self-hosted attachment API backed by Postgre
 - POST `/api/v1/objects?filename=example.txt`: administrator bearer token, raw request body, maximum 1 MiB enforced while streaming, no arbitrary SQL.
 - GET `/api/v1/objects`: administrator or viewer bearer token, paginated metadata only.
 - GET `/api/v1/objects/{uuid}`: administrator or viewer bearer token, checksum-verified binary download with attachment-only disposition and `nosniff`.
-- `gc_storage.objects` is outside the generic `app` schema and the public PostgREST namespace; grant sets permit `gc_api` SELECT/INSERT and `gc_reader` SELECT only.
+- `gc_storage.objects` is outside the generic `app` schema and the public PostgREST namespace; grant sets permit `gc_api` SELECT/INSERT/DELETE and `gc_reader` SELECT only after the dedicated `008` privilege migration.
 - The service validates ASCII basenames, media types, SHA256, exact byte counts and UUIDs. No public download URL, multipart parser, host file mount, path traversal or automatic egress is introduced.
 
-**Important limits:** The viewer token can read **every** object. A fixed global capacity bound of 512 objects / 128 MiB is enforced with a database trigger (see [quota runbook](OBJECT_QUOTA.md)), but there are no individual users, ownership, per-tenant quotas or ACLs, access expiry, malware scanning, retention settings, deletion endpoint, CDN or S3 compatibility. Do not store sensitive or irreplaceable files in this development preview.
+**Important limits:** The viewer token can read **every** object. A fixed global capacity bound of 512 objects / 128 MiB is enforced with a database trigger (see [quota runbook](OBJECT_QUOTA.md)), but there are no individual users, ownership, per-tenant quotas or ACLs, access expiry, malware scanning, governed retention settings, bulk/owner-specific erasure, CDN or S3 compatibility. A strictly confirmed single-object DELETE endpoint exists for administrators only. Do not store sensitive or irreplaceable files in this development preview.
 
 ## First install / existing volumes
 
@@ -21,6 +21,8 @@ sh scripts/apply_small_object_migration.sh --apply
 ```
 
 The script only applies additive schema and table grants; it cannot replace an established production migration mechanism. Never erase existing volumes to make the migration appear to work.
+
+Administrators also have an independently [gated single-object deletion capability](OBJECT_DELETION.md) enabled by an additive `008-small-object-delete.sql` privilege migration. This does not guarantee physical erasure from backups, snapshots or WAL.
 
 ## Direction
 

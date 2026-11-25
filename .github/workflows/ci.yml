@@ -93,6 +93,12 @@ jobs:
           . ./.env
           set +a
           python3 scripts/audit_smoke.py
+      - name: Verify confirmed single-object deletion on disposable database
+        run: |
+          set -a
+          . ./.env
+          set +a
+          python3 scripts/object_deletion_smoke.py --disposable
       - name: Verify aggregate small-object quota in disposable database
         run: sh scripts/quota_smoke.sh --disposable
       - name: Verify guarded backup CLI and isolated recovery drill

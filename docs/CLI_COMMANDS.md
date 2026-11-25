@@ -160,6 +160,23 @@ python3 scripts/admin_write_smoke.py --disposable
 - **Expected:** HTTP 429 Retry-After on excess admin writes while viewer reads continue.
 - **Limit:** per-process quota reset on restart, no user/tenant protection. See [write throttle runbook](WRITE_THROTTLE.md).
 
+## Safe single-object deletion privilege and disposable contract
+
+```sh
+# Read-only usage check:
+sh scripts/apply_object_delete_migration.sh
+# Only after independently verified backup, SQL and authorization:
+sh scripts/apply_object_delete_migration.sh --apply
+
+# **Disposable database only**, changes one ephemeral test object:
+set -a; . ./.env; set +a
+python3 scripts/object_deletion_smoke.py --disposable
+```
+
+- **Risk:** migration changes DELETE privileges on private objects; the API deletion endpoint is irreversible from the live database. Verify backup/rollback and never run the disposable contract script against important volumes.
+- **Verification:** viewer deletion denied, explicit confirmation and expected SHA-256 required, one-row DELETE returns 204, subsequent GET returns 404, metadata-only DELETE audit event verified.
+- **Limit:** no soft-delete, per-user object ownership or erasure from backups/WAL. See [object deletion runbook](OBJECT_DELETION.md).
+
 ## Backup and isolated recovery drill
 
 ```sh
