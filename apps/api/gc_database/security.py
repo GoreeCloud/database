@@ -7,7 +7,7 @@ import re
 
 from fastapi import Header, HTTPException, status
 
-from .oidc import oidc_reader_authorized, oidc_settings
+from .oidc import READ_SCOPE, WRITE_SCOPE, oidc_reader_authorized, oidc_settings, oidc_subject
 from .rate_limits import admin_write_throttle
 
 IDENTIFIER_RE = re.compile(r"^[a-z_][a-z0-9_]{0,62}$")
@@ -57,6 +57,24 @@ def require_admin(authorization: str | None = Header(default=None)) -> None:
     if current_scope(authorization) != "admin":
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Administrator token required")
     admin_write_throttle.check()
+
+
+def require_personal_read(authorization: str | None = Header(default=None)) -> str:
+    """Only an explicitly scoped, signed individual OIDC token has identity."""
+    require_configuration()
+    subject = oidc_subject(_bearer(authorization), (READ_SCOPE,))
+    if subject is None:
+        raise HTTPException(status_code=401, detail="Verified personal read scope required")
+    return subject
+
+
+def require_personal_write(authorization: str | None = Header(default=None)) -> str:
+    """Write scope applies ONLY to the private owner-isolated notes endpoint."""
+    require_configuration()
+    subject = oidc_subject(_bearer(authorization), (READ_SCOPE, WRITE_SCOPE))
+    if subject is None:
+        raise HTTPException(status_code=401, detail="Verified personal note write scope required")
+    return subject
 
 
 def require_read(authorization: str | None = Header(default=None)) -> None:
