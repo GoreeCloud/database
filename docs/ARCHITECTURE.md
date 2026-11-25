@@ -25,6 +25,7 @@ Database data persists in named volume `pg_data`. The `GC_ADMIN_TOKEN` is the sh
 - `GET /api/v1/tables` — list user tables in `app` schema.
 - `GET /api/v1/tables/app/{table}/schema` — read-only `information_schema`/PostgreSQL catalog metadata: columns, types, nullability, defaults, primary keys and index definitions. No caller-authored SQL.
 - `GET /api/v1/tables/app/{table}/rows?limit=25&offset=0` — read first 1–100 rows per page, no caller SQL.
+- `GET /api/v1/tables/app/{table}/export.csv?limit=100&offset=0` — authenticated, SELECT-only spreadsheet-safe CSV page; max 500 rows/100 columns/2 MiB. No cross-user privacy boundary or full snapshot consistency.
 - `POST /api/v1/tables/app/{table}/rows` — insert a flat JSON object using bound parameters; DB constraints enforce integrity.
 - `GET /rest/catalog` — anonymous SELECT on the intentionally non-sensitive seeded `app.catalog` table only.
 
