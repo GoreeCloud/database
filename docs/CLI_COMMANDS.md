@@ -64,6 +64,14 @@ python3 scripts/object_storage_smoke.py
 - **Expected:** authorization rejects anonymous/readonly mutation, authenticated table reads succeed, a committed catalog event arrives, a small file can be uploaded/listed/downloaded with SHA256 integrity. Re-test on each relevant change.
 - **Rollback:** development-test database disposal only after backing up anything important and verifying correct target. Do not erase real volumes.
 
+## Bounded CSV page export
+
+Authenticated `GET /api/v1/tables/app/catalog/export.csv?limit=25&offset=0` reads through the PostgreSQL `gc_reader` role and returns a spreadsheet-safe, 2 MiB maximum UTF-8 CSV attachment. It is limited to 500 rows per request and is not a consistent full export. Use the in-memory-authenticated browser **Export page CSV** action or the disposable `sh scripts/smoke.sh` test above; do not place bearer tokens in shell history, query strings or shared download URLs. See [CSV export runbook](CSV_EXPORT.md).
+
+- **Risk:** read-only database access, but output is potentially sensitive and must be saved on approved, private storage.
+- **Verification:** disposable CI checks a seeded catalog row and rejects anonymous CSV access.
+- **Gap:** user-scoped export, retention, auditing and durable snapshot export are unimplemented.
+
 ## Existing-volume SQL migrations
 
 The three scripts require explicit `--apply` and a **verified independent backup**, current compatible Compose PostgreSQL service, properly configured private roles and review of the SQL file. Dry-run invocation without `--apply` exits without executing a mutation.
