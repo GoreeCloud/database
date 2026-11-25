@@ -49,6 +49,10 @@ For web-only development: `cd apps/web && npm install && npm run dev`; Vite prox
 - `scripts`: local secret setup, explicit read-role/catalog-event migrations, guarded logical backup and isolated restore drill. See [access upgrade](docs/READ_ONLY_ACCESS.md), [realtime preview](docs/REALTIME_PREVIEW.md), [small-object storage](docs/SMALL_OBJECTS.md), [web/Android object clients](docs/OBJECT_CLIENTS.md), and [recovery runbook](docs/BACKUP_AND_RECOVERY.md).
 - `docs`: architecture, threat model, roadmap, component licenses, recovery limitations.
 
+## Dependency update governance
+
+The [dependency review runbook](docs/SUPPLY_CHAIN.md) describes weekly, PR-only version-update proposals for the Python API, React web app, Android Gradle, Docker and GitHub Actions. Changes still require protected CI and review; no source update auto-deploys or certifies production readiness.
+
 ## Security boundaries
 
 The only published port is the web console on **127.0.0.1**, routing REST through `/rest/` and management through `/api/`. Management endpoints require a randomly generated bearer secret. This **preview must not be exposed directly to the public Internet**. Android requires HTTPS: terminate TLS with approved authentication and secure network routing before mobile connections. Do not put the management token in source, query strings or third-party services. Back up PostgreSQL volumes before important changes, rehearse restores in isolation and follow [SECURITY.md](SECURITY.md). Do not use with sensitive or irreplaceable data until authentication, monitoring, restore testing and operational hardening pass.
