@@ -132,6 +132,18 @@ sh scripts/quota_smoke.sh --disposable
 - **Verification:** CI validates the 513th small-object insertion is rejected by `gc_storage_total_quota`; the database retains records unchanged after rollback. This is global safety, not a tenant or per-user quota.
 - **Limits:** no production storage monitoring, quota enforcement for PostgreSQL WAL overhead, retention/deletion or object encryption certification.
 
+## Disposable administrator write throttle verification
+
+```sh
+# Only after disposable environment, data volume and credentials are verified:
+set -a; . ./.env; set +a
+python3 scripts/admin_write_smoke.py --disposable
+```
+
+- **Risk:** state-changing; the script deliberately creates temporary catalog rows and tests a 30-per-minute admin write ceiling. It must not target real or irreplaceable records.
+- **Expected:** the API eventually returns HTTP 429 with Retry-After for admin writes; anonymous and reader writes remain unauthorized, while viewer reads remain available.
+- **Limit:** resets per process/restart, no per-user/tenant protection. See [write throttle runbook](WRITE_THROTTLE.md).
+
 ## Backup and isolated recovery drill
 
 ```sh
