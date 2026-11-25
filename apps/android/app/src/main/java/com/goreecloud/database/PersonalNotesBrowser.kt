@@ -25,6 +25,7 @@ internal fun PersonalNotesBrowser(client: DatabaseClient, onClose: () -> Unit) {
     var title by remember(client) { mutableStateOf("") }
     var content by remember(client) { mutableStateOf("") }
     var edit by remember(client) { mutableStateOf(false) }
+    var pendingDelete by remember(client) { mutableStateOf<PersonalNote?>(null) }
     var busy by remember(client) { mutableStateOf(false) }
     var error by remember(client) { mutableStateOf("") }
     var status by remember(client) { mutableStateOf("") }
@@ -95,6 +96,36 @@ internal fun PersonalNotesBrowser(client: DatabaseClient, onClose: () -> Unit) {
         }
     }
 
+    fun deleteConfirmed() {
+        val note = pendingDelete ?: return
+        if (busy) return
+        busy = true
+        error = ""
+        status = ""
+        scope.launch {
+            try {
+                withContext(Dispatchers.IO) { client.deletePersonalNote(note.id) }
+                pendingDelete = null
+                val result = withContext(Dispatchers.IO) { client.get("/v1/me/notes?limit=25") }
+                val data = result.getJSONArray("notes")
+                notes = (0 until data.length()).map { index ->
+                    val entry = data.getJSONObject(index)
+                    PersonalNote(
+                        id = entry.getString("id"),
+                        title = entry.getString("title"),
+                        content = entry.getString("content"),
+                        timestamp = entry.getString("created_at")
+                    )
+                }
+                status = "Note deleted from the active database. Backups may retain copies."
+            } catch (failure: Exception) {
+                error = failure.message ?: "Private-note deletion unavailable."
+            } finally {
+                busy = false
+            }
+        }
+    }
+
     LaunchedEffect(client) { refresh() }
 
     Column(Modifier.fillMaxWidth()) {
@@ -103,6 +134,7 @@ internal fun PersonalNotesBrowser(client: DatabaseClient, onClose: () -> Unit) {
                 notes = emptyList()
                 title = ""
                 content = ""
+                pendingDelete = null
                 onClose()
             }) { Text("← Tables") }
             TextButton(onClick = { refresh() }, enabled = !busy) { Text("Refresh") }
@@ -118,6 +150,22 @@ internal fun PersonalNotesBrowser(client: DatabaseClient, onClose: () -> Unit) {
         if (error.isNotEmpty()) Text(error, color = MaterialTheme.colorScheme.error,
             style = MaterialTheme.typography.bodySmall)
         if (status.isNotEmpty()) Text(status, style = MaterialTheme.typography.bodySmall)
+        pendingDelete?.let { item ->
+            Spacer(Modifier.height(8.dp))
+            ElevatedCard(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(14.dp)) {
+                    Text("Confirm permanent note deletion", style = MaterialTheme.typography.titleSmall)
+                    Text("Delete ${item.title} from the active database? Backups may still retain copies.",
+                        style = MaterialTheme.typography.bodyMedium)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        TextButton(onClick = { pendingDelete = null }, enabled = !busy) { Text("Cancel") }
+                        Button(onClick = { deleteConfirmed() }, enabled = !busy) {
+                            Text("Delete my note")
+                        }
+                    }
+                }
+            }
+        }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             TextButton(onClick = { edit = !edit }, enabled = !busy && error.isEmpty()) {
                 Text(if (edit) "Cancel editor" else "Create note")
@@ -155,6 +203,10 @@ internal fun PersonalNotesBrowser(client: DatabaseClient, onClose: () -> Unit) {
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(Modifier.height(10.dp))
                         Text(note.content, style = MaterialTheme.typography.bodyMedium)
+                        Spacer(Modifier.height(8.dp))
+                        TextButton(onClick = { pendingDelete = note }, enabled = !busy) {
+                            Text("Delete note")
+                        }
                     }
                 }
             }

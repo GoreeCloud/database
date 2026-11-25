@@ -84,6 +84,18 @@ def personal_notes(
     })
 
 
+@app.delete("/v1/me/notes/{note_id}", status_code=204)
+def remove_personal_note(
+    note_id: str,
+    subject: str = Depends(require_personal_write),
+    confirmation: str | None = Header(default=None, alias="X-GC-Confirm-Delete"),
+):
+    if confirmation != "delete-my-note":
+        raise HTTPException(status_code=428, detail="Explicit private-note deletion confirmation required")
+    personal.delete_personal_note(subject, note_id)
+    return Response(status_code=204)
+
+
 @app.get("/v1/audit/events", dependencies=[Depends(require_admin_view)])
 def audit_events(
     limit: int = Query(25, ge=1, le=100),

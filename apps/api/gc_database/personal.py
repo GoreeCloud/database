@@ -2,11 +2,29 @@
 from __future__ import annotations
 
 from typing import Any
+from uuid import UUID
 
 from fastapi import HTTPException
 from psycopg.errors import CheckViolation
 
 from .store import connection
+
+
+def delete_personal_note(subject: str, raw_id: str) -> None:
+    """Delete one row owned by the verified OIDC subject, also enforced by RLS."""
+    try:
+        note_id = UUID(raw_id)
+    except (ValueError, AttributeError, TypeError):
+        raise HTTPException(status_code=400, detail="Malformed private note ID") from None
+    with connection() as db, db.cursor() as cur:
+        cur.execute("SELECT set_config('gc.request_subject', %s, true)", (subject,))
+        cur.execute(
+            "DELETE FROM gc_personal.notes WHERE id = %s AND owner_sub = %s RETURNING id",
+            (note_id, subject),
+        )
+        deleted = cur.fetchone()
+    if deleted is None:
+        raise HTTPException(status_code=404, detail="Private note not found")
 
 
 def list_personal_notes(subject: str, limit: int, offset: int) -> list[dict[str, Any]]:
