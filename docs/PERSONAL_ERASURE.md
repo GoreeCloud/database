@@ -2,6 +2,8 @@
 
 **Feature:** `DELETE /api/v1/me/notes/{uuid}` deletes one private note that belongs to the current **signature-verified OIDC subject**, never a caller-supplied owner. It requires both OIDC `goreecloud.database.read` and `goreecloud.database.write` scopes and the exact `X-GC-Confirm-Delete: delete-my-note` header. A shared global administrator/viewer token is not an individual identity and cannot delete private notes.
 
+The native Android and React personal-notes views provide a **two-step deletion confirmation** and issue the explicit confirmation header only after the user approves. They do not accept client-supplied owner IDs, do not persist drafts or tokens, and do not claim secure destruction of backups.
+
 The API parses the target UUID strictly, sets `gc.request_subject` using a bound, **transaction-local** value, and uses a single parameterized SQL DELETE with `WHERE id=%s AND owner_sub=%s`. **PostgreSQL FORCE ROW LEVEL SECURITY** independently enforces the same signed-subject policy for DELETE. Missing confirmation fails with HTTP 428, invalid UUID with HTTP 400, and a non-existent or cross-subject note returns identical HTTP 404.
 
 This does not allow deleting arbitrary `app` rows, another user’s notes, whole tables, backups, or objects.
