@@ -11,6 +11,7 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import HTTPException
+from psycopg.errors import CheckViolation
 
 from .store import connection
 
@@ -46,15 +47,22 @@ def save_object(filename: str, media_type: str, payload: bytes) -> dict[str, Any
     if not 1 <= len(payload) <= MAX_OBJECT_BYTES:
         raise HTTPException(status_code=413, detail="Object must be 1 byte to 1 MiB")
     digest = hashlib.sha256(payload).hexdigest()
-    with connection() as db, db.cursor() as cur:
-        cur.execute(
-            "INSERT INTO gc_storage.objects "
-            "(filename, media_type, size_bytes, sha256, contents) "
-            "VALUES (%s, %s, %s, %s, %s) "
-            "RETURNING id::text AS id, filename, media_type, size_bytes, sha256, created_at",
-            (filename, media_type, len(payload), digest, payload),
-        )
-        return cur.fetchone()
+    try:
+        with connection() as db, db.cursor() as cur:
+            cur.execute(
+                "INSERT INTO gc_storage.objects "
+                "(filename, media_type, size_bytes, sha256, contents) "
+                "VALUES (%s, %s, %s, %s, %s) "
+                "RETURNING id::text AS id, filename, media_type, size_bytes, sha256, created_at",
+                (filename, media_type, len(payload), digest, payload),
+            )
+            return cur.fetchone()
+    except CheckViolation as exception:
+        # Only the migration's explicitly named global quota maps to 507.
+        # Other constraints remain generic database errors, without SQL leakage.
+        if getattr(exception.diag, "constraint_name", None) == "gc_storage_total_quota":
+            raise HTTPException(status_code=507, detail="Small-object capacity limit reached") from None
+        raise
 
 
 def list_objects(limit: int, offset: int) -> list[dict[str, Any]]:
