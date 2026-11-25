@@ -8,6 +8,6 @@ This document records **interfaces and future work**, not integrated operating s
 | GoreeCloud Mesh | API contract defined at `/api/v1` with bearer authorization | Review Mesh discovery, identity propagation, event schema and signed service contract |
 | GoreeCloud Identity | Distinct generated admin and viewer tokens (shared, long-lived preview credentials) | OIDC-based user login, project roles, per-person claims, revocation and short-lived access |
 | GoreeShield | Local-only bindings and no analytics by default | Retention settings, auditable consent, redaction and portability |
-| Wardveil | Secret hygiene and restricted network/configuration defaults | Approved vulnerability scanning, incident events, audit log, backups and monitoring |
+| Wardveil | Secret hygiene, restricted network/configuration defaults and a single-process administrator mutation burst limit; no verified Wardveil service integration | Approved identity-scoped throttling, vulnerability scanning, incident events, audit log, backups and monitoring |
 
 Never share service access tokens through public GitHub issues, Android bundles, front-end build variables or browser local storage. Inter-product requests require explicit policy and identity acceptance.

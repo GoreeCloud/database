@@ -27,7 +27,7 @@ Database data persists in named volume `pg_data`. The `GC_ADMIN_TOKEN` is the sh
 - `GET /api/v1/tables/app/{table}/schema` — read-only `information_schema`/PostgreSQL catalog metadata: columns, types, nullability, defaults, primary keys and index definitions. Readable from the web console and native Android schema viewer; no caller-authored SQL.
 - `GET /api/v1/tables/app/{table}/rows?limit=25&offset=0` — read first 1–100 rows per page, no caller SQL.
 - `GET /api/v1/tables/app/{table}/export.csv?limit=100&offset=0` — authenticated, SELECT-only spreadsheet-safe CSV page; max 500 rows/100 columns/2 MiB. No cross-user privacy boundary or full snapshot consistency.
-- `POST /api/v1/tables/app/{table}/rows` — insert a flat JSON object using bound parameters; DB constraints enforce integrity.
+- `POST /api/v1/tables/app/{table}/rows` — insert a flat JSON object using bound parameters; DB constraints enforce integrity. Admin writes (including object uploads) share a 30/minute per-process throttle with HTTP 429 and Retry-After; no distributed/user-specific limit.
 - `GET /rest/catalog` — anonymous SELECT on the intentionally non-sensitive seeded `app.catalog` table only.
 
 `Authorization: Bearer <GC_ADMIN_TOKEN>` is required for write actions. Authenticated read routes accept the independent `GC_READ_TOKEN` as well; neither token is a user identity or multi-tenant policy. The `app` schema only is permitted. Errors intentionally omit SQL traces and credentials. HTTPS for mobile remains a **deployment dependency**, not bundled by this stack.
