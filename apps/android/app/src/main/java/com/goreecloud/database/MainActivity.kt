@@ -22,6 +22,7 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.URL
+import java.io.ByteArrayOutputStream
 import javax.net.ssl.HttpsURLConnection
 
 private val Canvas = Color(0xFF0D121D)
@@ -48,7 +49,7 @@ class MainActivity : ComponentActivity() {
 }
 
 /** Requires an authorized HTTPS gateway; plaintext connections are intentionally blocked. */
-private class DatabaseClient(private val endpoint: String, private val secret: String) {
+internal class DatabaseClient(private val endpoint: String, private val secret: String) {
     private val base = endpoint.trim().trimEnd('/')
     init {
         val url = URL(base)
@@ -75,6 +76,41 @@ private class DatabaseClient(private val endpoint: String, private val secret: S
             connection.disconnect()
         }
     }
+
+    fun downloadObject(id: String): ByteArray {
+        val objectId = java.util.UUID.fromString(id)
+        val connection = URL(base + "/v1/objects/" + objectId).openConnection() as HttpsURLConnection
+        connection.connectTimeout = 8000
+        connection.readTimeout = 8000
+        connection.instanceFollowRedirects = false
+        connection.requestMethod = "GET"
+        connection.setRequestProperty("Authorization", "Bearer $secret")
+        connection.setRequestProperty("Accept", "application/octet-stream")
+        connection.setRequestProperty("Cache-Control", "no-store")
+        try {
+            if (connection.responseCode !in 200..299) {
+                throw IllegalStateException("Download failed (HTTP ${connection.responseCode})")
+            }
+            if (connection.contentLengthLong > 1_048_576L) {
+                throw IllegalStateException("Object exceeds 1 MiB")
+            }
+            val output = ByteArrayOutputStream()
+            connection.inputStream.use { stream ->
+                val buffer = ByteArray(8192)
+                while (true) {
+                    val count = stream.read(buffer)
+                    if (count < 0) break
+                    if (output.size() + count > 1_048_576) {
+                        throw IllegalStateException("Object exceeds 1 MiB")
+                    }
+                    output.write(buffer, 0, count)
+                }
+            }
+            return output.toByteArray()
+        } finally {
+            connection.disconnect()
+        }
+    }
 }
 
 @Composable
@@ -84,6 +120,7 @@ private fun DatabaseScreen() {
     // Never persisted through rememberSaveable, local preferences, backup or logcat.
     var client by remember { mutableStateOf<DatabaseClient?>(null) }
     var tableNames by remember { mutableStateOf(listOf<String>()) }
+    var showObjects by remember { mutableStateOf(false) }
     var chosenTable by remember { mutableStateOf<String?>(null) }
     var columns by remember { mutableStateOf(listOf<String>()) }
     var tableRows by remember { mutableStateOf(listOf<Map<String, String>>()) }
@@ -108,6 +145,7 @@ private fun DatabaseScreen() {
                 val arr = result.getJSONArray("tables")
                 tableNames = (0 until arr.length()).map { arr.getJSONObject(it).getString("name") }
                 chosenTable = null
+                showObjects = false
             } catch (e: Exception) {
                 error = e.message ?: "Could not connect"
             } finally {
@@ -151,7 +189,7 @@ private fun DatabaseScreen() {
                 label = { Text("HTTPS API base URL") }, singleLine = true, placeholder = { Text("https://db.example/api") })
             Spacer(Modifier.height(12.dp))
             OutlinedTextField(value = inputToken, onValueChange = { inputToken = it }, modifier = Modifier.fillMaxWidth(),
-                label = { Text("Administration token") }, visualTransformation = PasswordVisualTransformation(), singleLine = true)
+                label = { Text("Admin or viewer token") }, visualTransformation = PasswordVisualTransformation(), singleLine = true)
             Spacer(Modifier.height(16.dp))
             Button(onClick = { connect() }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Connect securely") }
             Spacer(Modifier.height(14.dp))
@@ -162,6 +200,7 @@ private fun DatabaseScreen() {
                 TextButton(onClick = {
                     client = null
                     chosenTable = null
+                    showObjects = false
                     tableNames = emptyList()
                     tableRows = emptyList()
                     error = ""
@@ -169,8 +208,13 @@ private fun DatabaseScreen() {
             }
             if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
             Spacer(Modifier.height(12.dp))
-            if (chosenTable == null) {
-                Text("Tables", style = MaterialTheme.typography.titleLarge)
+            if (showObjects) {
+                client?.let { current -> ObjectBrowser(client = current, onClose = { showObjects = false }) }
+            } else if (chosenTable == null) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("Tables", style = MaterialTheme.typography.titleLarge)
+                    TextButton(onClick = { showObjects = true }, enabled = !busy) { Text("Small objects") }
+                }
                 Spacer(Modifier.height(10.dp))
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     items(tableNames) { table ->
