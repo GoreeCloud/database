@@ -87,6 +87,8 @@ jobs:
           . ./.env
           set +a
           python3 scripts/object_storage_smoke.py
+      - name: Verify aggregate small-object quota in disposable database
+        run: sh scripts/quota_smoke.sh --disposable
       - name: Verify guarded backup CLI and isolated recovery drill
         run: |
           python3 -m unittest discover -s scripts -p "test_*.py"
