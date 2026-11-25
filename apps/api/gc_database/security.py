@@ -7,6 +7,7 @@ import re
 
 from fastapi import Header, HTTPException, status
 
+from .oidc import oidc_reader_authorized, oidc_settings
 from .rate_limits import admin_write_throttle
 
 IDENTIFIER_RE = re.compile(r"^[a-z_][a-z0-9_]{0,62}$")
@@ -25,6 +26,7 @@ def require_configuration() -> str:
     for key in ("DB_HOST", "DB_NAME", "DB_USER", "DB_PASSWORD", "DB_READ_USER", "DB_READ_PASSWORD"):
         if not os.environ.get(key):
             raise RuntimeError(f"{key} is required")
+    oidc_settings()  # Fail closed on partially configured external identity.
     return admin
 
 
@@ -43,6 +45,10 @@ def current_scope(authorization: str | None = Header(default=None)) -> str:
     if is_admin:
         return "admin"
     if is_reader:
+        return "reader"
+    # OIDC access tokens can ONLY receive the shared read-only capability.
+    # They cannot be upgraded to admin and do not confer per-tenant RLS.
+    if oidc_reader_authorized(candidate):
         return "reader"
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
