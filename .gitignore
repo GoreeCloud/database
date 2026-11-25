@@ -11,6 +11,7 @@ node_modules/
 dist/
 build/
 .gradle/
+.kotlin/
 .idea/
 local.properties
 *.iml
