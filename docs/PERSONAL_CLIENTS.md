@@ -23,6 +23,7 @@ The personal-note editor and loaded content use ordinary Compose `remember`, **n
 - The existing global catalog, object, and audit endpoints retain their separate shared token semantics. A personal-note write scope does **not** allow administrator writes elsewhere.
 - Both clients require an already provisioned, operator-approved, signed OIDC access token, which the user enters manually. **OAuth authorization-code + PKCE sign-in, refresh and logout are not implemented.**
 - A read-only signed token may browse but cannot create a note. Shared admin/viewer tokens cannot browse private notes. The backend's `gc_personal.notes` RLS policies prevent cross-subject reads and owner-forgery inserts.
+- Personal-note create/delete may return 429 with `Retry-After` after 12 signed-subject mutation attempts in a minute. This limit is per API process and does not grant broader identity privileges.
 - There is no content encryption at rest beyond the host's separately configured storage protection, no offline cache or sync, no governed retention/account-level erasure, no actor audit, no user-specific rate limiter, and no certified live provider integration. Individual note DELETE is supported but does not purge backups.
 - The preview is not approved for production personal/family information. GoreeShield must govern consent/minimization/retention, Wardveil the security acceptance, and GoreeCloud Identity real OAuth lifecycle and access policies.
 
