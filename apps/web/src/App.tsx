@@ -134,6 +134,31 @@ export default function App() {
     }
   }
 
+  async function downloadCsvPage() {
+    if (!selected || scope === 'unknown' || loading) return
+    setMessage('')
+    try {
+      const endpoint = '/api/v1/tables/' + encodeURIComponent(selected.schema)
+        + '/' + encodeURIComponent(selected.name) + '/export.csv?limit=25&offset=' + offset
+      const response = await fetch(endpoint, {
+        headers: { Authorization: 'Bearer ' + token },
+        cache: 'no-store',
+      })
+      if (!response.ok) throw new Error('CSV export unavailable (HTTP ' + response.status + ')')
+      const blob = await response.blob()
+      if (blob.size > 2_097_152) throw new Error('CSV export exceeds preview limit')
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = 'app-' + selected.name.replace(/[^a-z0-9_-]/gi, '_') + '-page.csv'
+      anchor.click()
+      setTimeout(() => URL.revokeObjectURL(url), 30_000)
+      setMessage('Requested a CSV download of this page only (up to 25 rows).')
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'CSV export failed')
+    }
+  }
+
   function disconnect() {
     setToken('')
     setScope('unknown')
@@ -176,7 +201,7 @@ export default function App() {
     <main className="content">
       <header className="topbar"><span>Workspace <span className="chevron">/</span> app <span className="chevron">/</span> {selected?.name ?? 'Tables'}</span><span className="preview-pill">DEVELOPMENT PREVIEW</span></header>
       <div className="main-inner">
-        <div className="heading-row"><div><p className="eyebrow">POSTGRESQL / SCHEMA EXPLORER</p><h1>{selected?.name ?? 'Your database'}</h1><p className="muted">Inspect and manage your application data with parameterized operations.</p></div><div className="actions"><button className="secondary" onClick={() => { if (selected) setSelected({ ...selected }); else void loadTables(token) }} disabled={loading}>↻ Refresh</button><button onClick={() => setInsertOpen(open => !open)} disabled={!selected || scope !== 'admin'}>{scope === 'reader' ? 'Read-only access' : '+ Insert row'}</button></div></div>
+        <div className="heading-row"><div><p className="eyebrow">POSTGRESQL / SCHEMA EXPLORER</p><h1>{selected?.name ?? 'Your database'}</h1><p className="muted">Inspect and manage your application data with parameterized operations.</p></div><div className="actions"><button className="secondary" onClick={() => { if (selected) setSelected({ ...selected }); else void loadTables(token) }} disabled={loading}>↻ Refresh</button><button className="secondary" onClick={() => void downloadCsvPage()} disabled={!selected || loading || scope === 'unknown'}>Export page CSV</button><button onClick={() => setInsertOpen(open => !open)} disabled={!selected || scope !== 'admin'}>{scope === 'reader' ? 'Read-only access' : '+ Insert row'}</button></div></div>
         {message && <div role="status" className="alert">{message} <button className="dismiss" onClick={() => setMessage('')}>Dismiss</button></div>}
         <div className="stat-grid"><div className="stat"><span>Tables available</span><strong>{tables.length}</strong><small>App schema</small></div><div className="stat"><span>Page size</span><strong>25</strong><small>Rows per request</small></div><div className="stat"><span>Connection</span><strong className="connected"><span className="status-dot" /> Secured</strong><small>{scope === 'admin' ? 'Admin · read/write' : scope === 'reader' ? 'Viewer · read-only' : 'Verifying access…'}</small></div></div>
         {insertOpen && scope === 'admin' && <form className="insert-panel" onSubmit={addRow}><h2>Insert JSON row</h2><p className="muted">Flat JSON keys must match existing columns. Database constraints remain authoritative.</p><textarea aria-label="JSON row" spellCheck={false} value={payload} onChange={e => setPayload(e.target.value)} rows={4}/><button type="submit">Insert row</button></form>}

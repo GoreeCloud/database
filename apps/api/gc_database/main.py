@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 from psycopg import Error as DatabaseError
 
 from . import store, storage
+from .exports import export_table_csv
 from .realtime import open_catalog_event_stream
 from .security import current_scope, require_admin, require_read, require_configuration, check_schema, check_identifier
 
@@ -61,6 +62,27 @@ async def stream_catalog_changes():
 @app.get("/v1/tables", dependencies=[Depends(require_read)])
 def tables():
     return {"tables": store.list_tables()}
+
+
+@app.get("/v1/tables/{schema}/{table}/export.csv", dependencies=[Depends(require_read)])
+def download_table_csv(
+    schema: str, table: str,
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0, le=1000000),
+):
+    check_schema(schema)
+    check_identifier(table)
+    contents = export_table_csv(schema, table, limit, offset)
+    return Response(
+        content=contents,
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f'attachment; filename="{schema}-{table}-page.csv"',
+            "X-Content-Type-Options": "nosniff",
+            "Content-Security-Policy": "sandbox",
+            "Cache-Control": "no-store",
+        },
+    )
 
 
 @app.get("/v1/tables/{schema}/{table}/rows", dependencies=[Depends(require_read)])
