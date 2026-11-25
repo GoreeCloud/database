@@ -132,6 +132,22 @@ sh scripts/quota_smoke.sh --disposable
 - **Verification:** CI validates the 513th small-object insertion is rejected by `gc_storage_total_quota`; the database retains records unchanged after rollback. This is global safety, not a tenant or per-user quota.
 - **Limits:** no production storage monitoring, quota enforcement for PostgreSQL WAL overhead, retention/deletion or object encryption certification.
 
+## Governed metadata-audit migration and smoke
+
+```sh
+# Safe usage check (does not modify database):
+sh scripts/apply_audit_migration.sh
+# After independent backup validation and authorization of the exact target:
+sh scripts/apply_audit_migration.sh --apply
+
+# On an independently confirmed disposable stack only, with .env loaded:
+python3 scripts/audit_smoke.py
+```
+
+- **Risk:** audit migration changes PostgreSQL triggers and grants, and may briefly lock tables; it requires a reviewed SQL diff, backup, change window and rollback procedure.
+- **Verification:** CI checks catalog and small-object INSERT metadata, rejection of the viewer token, and strictly fixed response field names.
+- **Limits:** source tables only, no actor attribution, deletion policy, tamper evidence or full Wardveil integration. See [audit metadata runbook](AUDIT_METADATA.md).
+
 ## Backup and isolated recovery drill
 
 ```sh

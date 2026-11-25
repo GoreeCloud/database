@@ -20,6 +20,7 @@ Database data persists in named volume `pg_data`. The `GC_ADMIN_TOKEN` is the sh
 - `GET /api/healthz` — process liveness only, unauthenticated; not a full DB readiness guarantee.
 - `GET /api/readyz` — unauthenticated, minimal read-only `SELECT 1` connectivity probe through the `gc_reader` PostgreSQL role; 503 on database failure, no SQL or credential disclosure. Docker Compose monitors this probe for API container health.
 - `GET /api/v1/session` — authenticate and return `admin` or `reader` capability information without disclosing credentials.
+- `GET /api/v1/audit/events?limit=25&offset=0` — shared-administrator-only, metadata-only event trail for changes to `app.catalog` and `gc_storage.objects`, via a read-only transaction. No row values, actor IDs or token data.
 - `GET /api/v1/events/catalog` — bounded SSE notifications for catalog INSERT/UPDATE/DELETE metadata only; no replay or user authorization beyond shared preview tokens.
 - `POST /api/v1/objects?filename=...` — administrator-only binary upload, 1 MiB maximum; PostgreSQL enforces a global 512-object/128 MiB capacity bound with safe 507 responses for quota exhaustion.
 - `GET /api/v1/objects` — authenticated object metadata listing; `GET /api/v1/objects/{uuid}` returns checksum-verified attachment bytes under the shared viewer/admin token boundary. The objects table lives in separate private `gc_storage` schema, never the generic `app` or public PostgREST schemas.
