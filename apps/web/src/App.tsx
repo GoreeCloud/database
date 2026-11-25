@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import SchemaPanel from './SchemaPanel'
 
 type Table = { schema: string; name: string }
 type Rows = { schema: string; table: string; columns: string[]; rows: Record<string, unknown>[]; limit: number; offset: number }
@@ -187,6 +188,7 @@ export default function App() {
           </div>
           <div className="panel-footer"><span>Showing offset {offset}</span><div><button className="secondary small" disabled={offset === 0 || loading} onClick={() => setOffset(Math.max(0, offset - 25))}>Previous</button><button className="secondary small" disabled={loading || (data?.rows.length ?? 0) < 25} onClick={() => setOffset(offset + 25)}>Next</button></div></div>
         </section>
+        {selected && <SchemaPanel token={token} schema={selected.schema} table={selected.name} />}
         <p className="footnote">GoreeCloud UI alpha palette · No public hosting · Data remains on your configured self-hosted database.</p>
       </div>
     </main>
