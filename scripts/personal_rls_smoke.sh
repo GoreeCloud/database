@@ -81,6 +81,32 @@ BEGIN
   END;
   IF NOT denied THEN RAISE EXCEPTION 'Per-owner notes quota did not reject 101st note'; END IF;
 END $$;
+SET LOCAL ROLE gc_api;
+SELECT set_config('gc.request_subject', 'ci-person-a', true);
+DO $$
+DECLARE affected integer;
+BEGIN
+  DELETE FROM gc_personal.notes WHERE title = 'bob';
+  GET DIAGNOSTICS affected = ROW_COUNT;
+  IF affected <> 0 THEN
+    RAISE EXCEPTION 'RLS DELETE policy permitted deleting another subject note';
+  END IF;
+  DELETE FROM gc_personal.notes WHERE title = 'alice';
+  GET DIAGNOSTICS affected = ROW_COUNT;
+  IF affected <> 1 THEN
+    RAISE EXCEPTION 'RLS DELETE policy blocked deletion of current subject note';
+  END IF;
+END $$;
+RESET ROLE;
+DO $$
+DECLARE n integer;
+BEGIN
+  SELECT count(*) INTO n FROM gc_personal.notes WHERE title = 'bob';
+  IF n <> 1 THEN RAISE EXCEPTION 'Cross-user note disappeared'; END IF;
+  IF pg_catalog.has_table_privilege('gc_reader', 'gc_personal.notes', 'DELETE') THEN
+    RAISE EXCEPTION 'Reader role unexpectedly has private-note DELETE privilege';
+  END IF;
+END $$;
 ROLLBACK;
 SQL
 echo "Per-subject PostgreSQL RLS and per-owner note quota verified (transaction rolled back)."

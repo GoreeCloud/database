@@ -45,7 +45,7 @@ Do not remove volumes to force migration. Do not weaken existing anonymous read 
 sh scripts/personal_rls_smoke.sh --disposable
 ```
 
-The database smoke tests absent-subject denial, Alice/Bob SELECT isolation, blocked owner-forgery INSERT, and 101st-note quota rejection, then rolls back all test rows. Python unit tests use ephemeral signed RSA JWTs to prove verified subject/scope binding and reject shared-token access to personal routes. The isolated recovery drill provisions disposable **NOLOGIN** role stubs for policy references, restores a custom-format backup and checks that FORCE RLS plus owner policies survived the restore (without restoring production role credentials).
+The database smoke tests absent-subject denial, Alice/Bob SELECT isolation, blocked owner-forgery INSERT, an [owner-only confirmed deletion policy](PERSONAL_ERASURE.md), and 101st-note quota rejection, then rolls back all test rows. Python unit tests use ephemeral signed RSA JWTs to prove verified subject/scope binding and reject shared-token access to personal routes. The isolated recovery drill provisions disposable **NOLOGIN** role stubs for policy references, restores a custom-format backup and checks that FORCE RLS plus owner policies survived the restore (without restoring production role credentials).
 
 **Not yet implemented:** production Keycloak/GoreeCloud Identity provisioning, OAuth authorization-code + PKCE clients, logout/revocation lifecycle, default tenant-wide RLS across all `app` tables, private object RLS, per-user rate limiting, persistent encrypted client/offline sync, searchable notes, deletion/retention management, actor attribution, independent security audit or protected production deployment.
 
