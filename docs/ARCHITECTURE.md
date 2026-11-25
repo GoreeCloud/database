@@ -20,7 +20,7 @@ Database data persists in named volume `pg_data`. The `GC_ADMIN_TOKEN` is the sh
 - `GET /api/healthz` — process liveness only, unauthenticated; not a full DB readiness guarantee.
 - `GET /api/readyz` — unauthenticated, minimal read-only `SELECT 1` connectivity probe through the `gc_reader` PostgreSQL role; 503 on database failure, no SQL or credential disclosure. Docker Compose monitors this probe for API container health.
 - `GET /api/v1/session` — authenticate and return `admin` or `reader` capability information without disclosing credentials.
-- `GET /api/v1/me/notes` — signed OIDC subject only, read scope, SELECT-only PostgreSQL RLS in `gc_personal` (not exposed via PostgREST or generic table explorer).
+- `GET /api/v1/me/notes` — signed OIDC subject only, read scope, SELECT-only PostgreSQL RLS in `gc_personal` (not exposed via PostgREST or generic table explorer). React and native Android provide explicit, memory-only note views with manual token entry; no PKCE sign-in or offline cache.
 - `POST /api/v1/me/notes` — only verified OIDC subjects with both read and note-write scopes may create small title/content notes; subject is never client-supplied JSON. PostgreSQL RLS enforces ownership and 100-notes-per-subject cap. Not a global admin or production tenant API.
 - `GET /api/v1/audit/events?limit=25&offset=0` — shared-administrator-only metadata for catalog/object events, via read-only transaction, without row values, actor IDs or token data.
 - `GET /api/v1/events/catalog` — bounded SSE notifications for catalog INSERT/UPDATE/DELETE metadata only; no replay or user authorization beyond shared preview tokens.

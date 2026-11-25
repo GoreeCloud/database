@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import SchemaPanel from './SchemaPanel'
 import ObjectPanel from './ObjectPanel'
 import AuditPanel from './AuditPanel'
+import PersonalNotesPanel from './PersonalNotesPanel'
 
 type Table = { schema: string; name: string }
 type Rows = { schema: string; table: string; columns: string[]; rows: Record<string, unknown>[]; limit: number; offset: number }
@@ -217,6 +218,7 @@ export default function App() {
         </section>
         {selected && <SchemaPanel token={token} schema={selected.schema} table={selected.name} />}
         <ObjectPanel token={token} scope={scope} />
+        {scope !== 'unknown' && <PersonalNotesPanel token={token} />}
         {scope === 'admin' && <AuditPanel token={token} />}
         <p className="footnote">GoreeCloud UI alpha palette · No public hosting · Data remains on your configured self-hosted database.</p>
       </div>

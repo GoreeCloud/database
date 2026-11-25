@@ -77,6 +77,39 @@ internal class DatabaseClient(private val endpoint: String, private val secret: 
         }
     }
 
+    fun createPersonalNote(title: String, content: String) {
+        val cleanedTitle = title.trim()
+        val cleanedContent = content.trim()
+        require(cleanedTitle.length in 1..120 && cleanedContent.length in 1..2048 &&
+            cleanedContent.toByteArray(Charsets.UTF_8).size <= 8192) {
+            "Private note title or content exceeds preview limits"
+        }
+        // Owner subject comes ONLY from the backend's signature-verified JWT;
+        // never include a caller-supplied owner in the JSON payload.
+        val body = JSONObject().put("title", cleanedTitle).put("content", cleanedContent)
+            .toString().toByteArray(Charsets.UTF_8)
+        val connection = URL(base + "/v1/me/notes").openConnection() as HttpsURLConnection
+        connection.connectTimeout = 8000
+        connection.readTimeout = 8000
+        connection.instanceFollowRedirects = false
+        connection.requestMethod = "POST"
+        connection.doOutput = true
+        connection.setRequestProperty("Authorization", "Bearer $secret")
+        connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+        connection.setRequestProperty("Accept", "application/json")
+        connection.setRequestProperty("Cache-Control", "no-store")
+        try {
+            connection.outputStream.use { it.write(body) }
+            if (connection.responseCode != 201) {
+                throw IllegalStateException(
+                    "Private note write unavailable (HTTP ${connection.responseCode}); a scoped OIDC token is required"
+                )
+            }
+        } finally {
+            connection.disconnect()
+        }
+    }
+
     fun downloadObject(id: String): ByteArray {
         val objectId = java.util.UUID.fromString(id)
         val connection = URL(base + "/v1/objects/" + objectId).openConnection() as HttpsURLConnection
@@ -162,6 +195,7 @@ private fun DatabaseScreen() {
     var client by remember { mutableStateOf<DatabaseClient?>(null) }
     var tableNames by remember { mutableStateOf(listOf<String>()) }
     var showObjects by remember { mutableStateOf(false) }
+    var showPersonal by remember { mutableStateOf(false) }
     var showSchema by remember { mutableStateOf(false) }
     var chosenTable by remember { mutableStateOf<String?>(null) }
     var columns by remember { mutableStateOf(listOf<String>()) }
@@ -188,6 +222,7 @@ private fun DatabaseScreen() {
                 tableNames = (0 until arr.length()).map { arr.getJSONObject(it).getString("name") }
                 chosenTable = null
                 showObjects = false
+                showPersonal = false
                 showSchema = false
             } catch (e: Exception) {
                 error = e.message ?: "Could not connect"
@@ -233,7 +268,7 @@ private fun DatabaseScreen() {
                 label = { Text("HTTPS API base URL") }, singleLine = true, placeholder = { Text("https://db.example/api") })
             Spacer(Modifier.height(12.dp))
             OutlinedTextField(value = inputToken, onValueChange = { inputToken = it }, modifier = Modifier.fillMaxWidth(),
-                label = { Text("Admin or viewer token") }, visualTransformation = PasswordVisualTransformation(), singleLine = true)
+                label = { Text("Admin, viewer, or signed OIDC token") }, visualTransformation = PasswordVisualTransformation(), singleLine = true)
             Spacer(Modifier.height(16.dp))
             Button(onClick = { connect() }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Connect securely") }
             Spacer(Modifier.height(14.dp))
@@ -245,6 +280,7 @@ private fun DatabaseScreen() {
                     client = null
                     chosenTable = null
                     showObjects = false
+                    showPersonal = false
                     showSchema = false
                     tableNames = emptyList()
                     tableRows = emptyList()
@@ -253,12 +289,17 @@ private fun DatabaseScreen() {
             }
             if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
             Spacer(Modifier.height(12.dp))
-            if (showObjects) {
+            if (showPersonal) {
+                client?.let { current -> PersonalNotesBrowser(client = current, onClose = { showPersonal = false }) }
+            } else if (showObjects) {
                 client?.let { current -> ObjectBrowser(client = current, onClose = { showObjects = false }) }
             } else if (chosenTable == null) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text("Tables", style = MaterialTheme.typography.titleLarge)
                     TextButton(onClick = { showObjects = true }, enabled = !busy) { Text("Small objects") }
+                }
+                TextButton(onClick = { showPersonal = true }, enabled = !busy) {
+                    Text("Personal notes (signed OIDC)")
                 }
                 Spacer(Modifier.height(10.dp))
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
