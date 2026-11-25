@@ -7,6 +7,7 @@ REST="$BASE/rest"
 ready=0
 for attempt in $(seq 1 20); do
     if curl --fail --silent --output /dev/null "$BASE/api/healthz" &&
+       curl --fail --silent --output /dev/null "$BASE/api/readyz" &&
        curl --fail --silent --output /dev/null "$REST/catalog"; then
         ready=1
         break

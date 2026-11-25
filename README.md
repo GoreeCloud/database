@@ -6,7 +6,7 @@ This is an independently developed GoreeCloud integration. It does **not** claim
 
 ## Implemented in this repository
 
-- PostgreSQL 17.12 persistent database, private container network and role-scoped bootstrap.
+- PostgreSQL 17.12 persistent database, private container network, role-scoped bootstrap and separate API liveness/readiness probes with Docker Compose health reporting.
 - PostgREST 16.6 read-only sample REST endpoint, proxied through the loopback-only web console.
 - Authenticated, bounded PostgreSQL LISTEN/NOTIFY SSE stream for metadata-only `app.catalog` changes; React refreshes the catalog view on events, Android supports manual refresh.
 - Private, authenticated small-object API in a distinct PostgreSQL schema, with strict 1 MiB per-object and [512-object / 128 MiB total quotas](docs/OBJECT_QUOTA.md), safe download headers and SHA256 validation. This is **not S3-compatible storage**.
