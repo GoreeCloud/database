@@ -182,6 +182,9 @@ private fun DatabaseScreen() {
             } else {
                 TextButton(onClick = { chosenTable = null }) { Text("← All tables") }
                 Text(chosenTable ?: "", style = MaterialTheme.typography.titleLarge)
+                TextButton(onClick = { chosenTable?.let { loadTable(it) } }, enabled = !busy) {
+                    Text("Refresh rows")
+                }
                 Spacer(Modifier.height(10.dp))
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     items(tableRows) { row ->

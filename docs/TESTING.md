@@ -18,6 +18,8 @@ docker compose config --quiet
 docker compose up --build -d
 docker compose ps
 curl -fsS http://127.0.0.1:4173/rest/catalog
+# With generated .env exported and the disposable stack running:
+python3 scripts/realtime_smoke.py
 set -a; . ./.env; set +a
 sh scripts/smoke.sh
 ```

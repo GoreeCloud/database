@@ -34,6 +34,7 @@ export default function App() {
   const [selected, setSelected] = useState<Table | null>(null)
   const [data, setData] = useState<Rows | null>(null)
   const [offset, setOffset] = useState(0)
+  const [liveRevision, setLiveRevision] = useState(0)
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
   const [insertOpen, setInsertOpen] = useState(false)
@@ -64,6 +65,37 @@ export default function App() {
   }, [])
 
   useEffect(() => {
+    if (!selected || !token || selected.name !== 'catalog') return
+    const controller = new AbortController()
+    void (async () => {
+      try {
+        const response = await fetch('/api/v1/events/catalog', {
+          headers: { Authorization: 'Bearer ' + token, Accept: 'text/event-stream' },
+          signal: controller.signal,
+          cache: 'no-store',
+        })
+        if (!response.ok || !response.body) return
+        const reader = response.body.getReader()
+        const decoder = new TextDecoder()
+        let pending = ''
+        while (!controller.signal.aborted) {
+          const { done, value } = await reader.read()
+          if (done) break
+          pending += decoder.decode(value, { stream: true })
+          const frames = pending.split('\n\n')
+          pending = frames.pop() ?? ''
+          if (frames.some(frame => frame.split('\n').includes('event: catalog'))) {
+            setLiveRevision(value => value + 1)
+          }
+        }
+      } catch {
+        // Streaming is a best-effort preview. Manual refresh always works.
+      }
+    })()
+    return () => { controller.abort() }
+  }, [selected?.name, token])
+
+  useEffect(() => {
     if (!selected || !token) return
     let cancelled = false
     setLoading(true)
@@ -74,7 +106,7 @@ export default function App() {
       .catch(error => { if (!cancelled) setMessage(error instanceof Error ? error.message : 'Request failed') })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
-  }, [selected, token, offset])
+  }, [selected, token, offset, liveRevision])
 
   function connect(event: FormEvent) {
     event.preventDefault()
@@ -148,7 +180,7 @@ export default function App() {
         <div className="stat-grid"><div className="stat"><span>Tables available</span><strong>{tables.length}</strong><small>App schema</small></div><div className="stat"><span>Page size</span><strong>25</strong><small>Rows per request</small></div><div className="stat"><span>Connection</span><strong className="connected"><span className="status-dot" /> Secured</strong><small>{scope === 'admin' ? 'Admin · read/write' : scope === 'reader' ? 'Viewer · read-only' : 'Verifying access…'}</small></div></div>
         {insertOpen && scope === 'admin' && <form className="insert-panel" onSubmit={addRow}><h2>Insert JSON row</h2><p className="muted">Flat JSON keys must match existing columns. Database constraints remain authoritative.</p><textarea aria-label="JSON row" spellCheck={false} value={payload} onChange={e => setPayload(e.target.value)} rows={4}/><button type="submit">Insert row</button></form>}
         <section className="data-panel" aria-label="Database rows">
-          <div className="panel-header"><div><h2>Table data</h2><p>{selected ? `app.${selected.name}` : 'No table selected'}</p></div><span className="pill">{loading ? 'Loading…' : `${data?.rows.length ?? 0} rows`}</span></div>
+          <div className="panel-header"><div><h2>Table data</h2><p>{selected ? `app.${selected.name}` + (selected.name === 'catalog' ? ' · live metadata updates' : '') : 'No table selected'}</p></div><span className="pill">{loading ? 'Loading…' : `${data?.rows.length ?? 0} rows`}</span></div>
           <div className="table-wrap">
             {data ? <table><thead><tr>{data.columns.map(column => <th key={column}>{column}</th>)}</tr></thead><tbody>{data.rows.map((row, i) => <tr key={i}>{data.columns.map(col => <td key={col} title={display(row[col])}>{display(row[col])}</td>)}</tr>)}</tbody></table> : <div className="empty">{loading ? 'Loading data…' : 'Select a table to inspect its rows.'}</div>}
             {data && data.rows.length === 0 && <div className="empty">No rows on this page.</div>}
