@@ -28,7 +28,8 @@ def test_fail_closed_without_admin_secret(monkeypatch):
 
 def test_constant_time_token_check(monkeypatch):
     monkeypatch.setenv("GC_ADMIN_TOKEN", "S" * 48)
-    for key in ("DB_HOST", "DB_USER", "DB_PASSWORD", "DB_NAME"):
+    monkeypatch.setenv("GC_READ_TOKEN", "R" * 48)
+    for key in ("DB_HOST", "DB_USER", "DB_PASSWORD", "DB_NAME", "DB_READ_USER", "DB_READ_PASSWORD"):
         monkeypatch.setenv(key, "test")
     require_admin("Bearer " + "S" * 48)
     with pytest.raises(HTTPException) as exc:

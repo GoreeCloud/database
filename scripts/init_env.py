@@ -13,7 +13,7 @@ lines = [
     "POSTGRES_DB=goreecloud",
     "POSTGRES_USER=postgres",
 ]
-for name in ("POSTGRES_PASSWORD", "GC_API_DB_PASSWORD", "GC_REST_DB_PASSWORD", "GC_ADMIN_TOKEN"):
+for name in ("POSTGRES_PASSWORD", "GC_API_DB_PASSWORD", "GC_REST_DB_PASSWORD", "GC_READ_DB_PASSWORD", "GC_ADMIN_TOKEN", "GC_READ_TOKEN"):
     lines.append(f"{name}={token_urlsafe(48)}")
 lines += ["WEB_PORT=4173"]
 fd = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)

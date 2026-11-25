@@ -32,4 +32,14 @@ curl --fail --silent --show-error "$BASE/api/v1/tables/app/catalog/rows" -H "Aut
     python3 -c 'import json,sys; obj=json.load(sys.stdin); assert any(r["slug"]=="welcome" for r in obj["rows"])'
 curl --fail --silent --show-error "$REST/catalog" |
     python3 -c 'import json,sys; data=json.load(sys.stdin); assert any(r["slug"]=="welcome" for r in data)'
-echo "GoreeCloud Database smoke: OK (private web API + catalog REST)."
+status=$(curl --silent --output /dev/null --write-out '%{http_code}' "$BASE/api/v1/tables" -H "Authorization: Bearer $GC_READ_TOKEN")
+if [ "$status" != "200" ]; then
+    echo "Viewer token GET returned HTTP $status (expected 200)" >&2
+    exit 1
+fi
+status=$(curl --silent --output /dev/null --write-out '%{http_code}' -X POST "$BASE/api/v1/tables/app/catalog/rows" -H "Authorization: Bearer $GC_READ_TOKEN" -H "Content-Type: application/json" --data '{"slug":"blocked"}')
+if [ "$status" != "401" ]; then
+    echo "Viewer token INSERT returned HTTP $status (expected 401)" >&2
+    exit 1
+fi
+echo "GoreeCloud Database smoke: OK (admin + read-only scopes + catalog REST)."
