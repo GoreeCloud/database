@@ -28,7 +28,9 @@ python3 scripts/restore_check.py --archive /secure/backups/database-YYYYMMDD.bac
 python3 scripts/restore_check.py --archive /secure/backups/database-YYYYMMDD.backup --apply
 ```
 
-With `--apply`, this creates an ephemeral PostgreSQL 17.12 container using `--network none` and no published ports, waits for it to become ready, restores the archive, validates `app.catalog` and removes the temporary container even if the drill fails. It **never writes to the running source database**, and is limited to the repository's own `app.catalog` preview schema. It is not a generalized multi-database restore migration tool.
+With `--apply`, this creates an ephemeral PostgreSQL 17.12 container using `--network none` and no published ports, waits for it to become ready, restores the archive, validates `app.catalog` and removes the temporary container even if the drill fails. When a backup contains the private notes schema, it also checks that **FORCE RLS** and its owner policies survived restore. This is a recovery **test**, not a generalized multi-database restore migration tool or a production recovery certification.
+
+Because `pg_dump --no-owner --no-acl` excludes global roles but preserves policies that reference named application roles, the isolated restore test creates **NOLOGIN-only placeholders** for `gc_reader` and `gc_api` inside the disposable container **before** `pg_restore`. It does not recreate real credentials, copy secrets, or change the source database. Restored grants/role custody must be addressed separately for real recovery.
 
 The temporary test container uses a randomly generated initialization password; its network is disabled. The Docker daemon and host operators remain trusted security boundaries.
 

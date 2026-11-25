@@ -113,29 +113,32 @@ def _client(jwks_url: str) -> PyJWKClient:
     return PyJWKClient(jwks_url, timeout=4, cache_jwk_set=True, lifespan=300)
 
 
-def oidc_reader_authorized(token: str) -> bool:
+WRITE_SCOPE = "goreecloud.database.write"
+
+
+def oidc_subject(token: str, required_scopes: tuple[str, ...] = (READ_SCOPE,)) -> str | None:
+    """Return the verified subject; never derive an identity from unsigned claims."""
     settings = oidc_settings()
     if settings is None or len(token) > MAX_JWT_SIZE or token.count(".") != 2:
-        return False
+        return None
     issuer, audience, jwks_source, inline = settings
     try:
         header = jwt.get_unverified_header(token)
-        # Caller-selected algorithms and URLs are always ignored.
         kid = header.get("kid")
         if (
             header.get("alg") != "RS256"
             or not isinstance(kid, str) or not 1 <= len(kid) <= 256
             or any(field in header for field in ("jku", "x5u", "x5c", "crit"))
         ):
-            return False
+            return None
         if inline:
             public_key = _public_jwks(jwks_source).get(kid)
             if public_key is None:
-                return False
+                return None
         else:
             public_key = _client(jwks_source).get_signing_key_from_jwt(token).key
             if getattr(public_key, "key_size", 0) < 2048:
-                return False
+                return None
         claims = jwt.decode(
             token, public_key, algorithms=["RS256"], audience=audience, issuer=issuer,
             leeway=15,
@@ -143,13 +146,21 @@ def oidc_reader_authorized(token: str) -> bool:
         )
         issued, expires = claims.get("iat"), claims.get("exp")
         subject, scopes = claims.get("sub"), claims.get("scope")
-        return bool(
+        if not (
             type(issued) in (int, float)
             and type(expires) in (int, float)
             and 0 < expires - issued <= MAX_TOKEN_AGE_SECONDS
             and issued <= time.time() + 15
             and isinstance(subject, str) and 1 <= len(subject) <= 256
-            and isinstance(scopes, str) and READ_SCOPE in scopes.split()
-        )
+            and isinstance(scopes, str)
+            and all(scope in scopes.split() for scope in required_scopes)
+        ):
+            return None
+        return subject
     except (PyJWTError, ValueError, TypeError, KeyError, OSError, TimeoutError):
-        return False
+        return None
+
+
+def oidc_reader_authorized(token: str) -> bool:
+    """Legacy scoped-reader API behavior remains unchanged."""
+    return oidc_subject(token, (READ_SCOPE,)) is not None

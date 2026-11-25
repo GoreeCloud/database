@@ -93,6 +93,8 @@ jobs:
           . ./.env
           set +a
           python3 scripts/audit_smoke.py
+      - name: Verify per-subject PostgreSQL RLS and private note quota
+        run: sh scripts/personal_rls_smoke.sh --disposable
       - name: Verify confirmed single-object deletion on disposable database
         run: |
           set -a
