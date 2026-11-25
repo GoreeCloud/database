@@ -149,9 +149,12 @@ jobs:
           . ./.env
           set +a
           python3 scripts/s3_preview_smoke.py --disposable
-      - name: Check container status on failure without printing credential-bearing logs
+      - name: Inspect sanitized S3 failure indicators without exposing credential-bearing logs
         if: failure()
-        run: docker compose -f compose.yaml -f compose.s3.yaml --profile s3-preview ps
+        run: |
+          docker compose -f compose.yaml -f compose.s3.yaml --profile s3-preview ps
+          docker compose -f compose.yaml -f compose.s3.yaml --profile s3-preview logs --no-color --tail=150 seaweedfs |
+            python3 -c 'import sys; s=sys.stdin.read().lower(); keys=("permission denied","read-only file system","unknown flag","fatal","panic","failed to","address already in use"); [print("S3 startup indicator " + k + ": " + str(k in s)) for k in keys]'
       - name: Stop S3 sandbox without removing persistent volumes
         if: always()
         run: docker compose -f compose.yaml -f compose.s3.yaml --profile s3-preview down

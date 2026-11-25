@@ -15,7 +15,7 @@ from uuid import uuid4
 
 import boto3
 from botocore.config import Config
-from botocore.exceptions import ClientError, EndpointConnectionError, ConnectTimeoutError, ReadTimeoutError
+from botocore.exceptions import ClientError, EndpointConnectionError, ConnectTimeoutError, ReadTimeoutError, ConnectionClosedError
 
 
 BUCKET = "goreecloud-preview"
@@ -46,12 +46,16 @@ def main() -> int:
         try:
             buckets = s3.list_buckets()["Buckets"]
             break
-        except (EndpointConnectionError, ConnectTimeoutError, ReadTimeoutError):
+        except (EndpointConnectionError, ConnectTimeoutError, ReadTimeoutError, ConnectionClosedError):
             if time.monotonic() >= until:
                 raise RuntimeError("S3 preview was not ready within the test window") from None
             time.sleep(2)
-        except ClientError:
-            raise RuntimeError("S3 preview rejected the generated signed credentials") from None
+        except ClientError as error:
+            status = error.response.get("ResponseMetadata", {}).get("HTTPStatusCode", 0)
+            if status in (429, 500, 502, 503, 504) and time.monotonic() < until:
+                time.sleep(2)
+                continue
+            raise RuntimeError("S3 preview rejected signed readiness or returned a non-transient error") from None
     if not any(bucket["Name"] == BUCKET for bucket in buckets):
         s3.create_bucket(Bucket=BUCKET)
 
