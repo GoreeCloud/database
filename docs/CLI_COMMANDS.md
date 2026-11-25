@@ -254,6 +254,20 @@ docker compose -f compose.yaml -f compose.s3.yaml --profile s3-preview stop seaw
 - **Verification:** separate CI job exercises signed S3 protocol PUT/GET/LIST/DELETE, unsigned-denial and safe cleanup. It does **not** change the PostgreSQL object API or enable production S3 storage.
 - **Gaps:** no real bucket ACL/tenant Identity integration, TLS release, data migration, encrypted backup or real Android/web object-client S3 acceptance.
 
+## Approved pure Wasmtime edge-function preview
+
+```sh
+# Local developer/CI host only; no production API or untrusted customer code:
+python3 -m pip install 'wasmtime==51.0.0'
+python3 -c "from scripts.edge_preview import approved_source; approved_source('double')"
+python3 scripts/edge_preview.py --module-id double --input 7
+python3 -m unittest scripts.test_edge_preview -v
+```
+
+- **Risk:** opt-in native Wasmtime runtime dependency runs first-party reviewed Wasm code inside the developer/CI Python process. Requires reviewed package source, no production data, no public network endpoint. It is not an OS process sandbox.
+- **Verification:** SHA-256-approved source only, no imports/WASI, fuel/stack and instance constraints, rejected untrusted modules and over-budget loops. Separate `edge-preview` CI job tests behavior. See [edge lab runbook](EDGE_PREVIEW.md).
+- **Limit:** no tenant project provisioning, signed packages, credential propagation, production host isolation or public edge functions.
+
 ## Backup and isolated recovery drill
 
 ```sh
