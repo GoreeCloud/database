@@ -264,7 +264,7 @@ private fun DatabaseScreen() {
             Spacer(Modifier.height(16.dp))
             Button(onClick = { connect() }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Connect securely") }
             Spacer(Modifier.height(14.dp))
-            Text("Only HTTPS connections are permitted. Configure a trusted TLS gateway before connecting a phone. Credentials remain in memory.", color = SoftText)
+            Text("Only HTTPS connections are permitted. Configure a trusted TLS gateway before connecting a phone. Credentials remain in memory.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         } else {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text("app schema", style = MaterialTheme.typography.titleMedium)
