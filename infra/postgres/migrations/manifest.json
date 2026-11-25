@@ -7,6 +7,7 @@
     "005-object-quota.sql": "bc56f3ff2963ebf38474f4f2086186003a711f8ea3f88627764973b031c4c07c",
     "006-audit-metadata.sql": "ba68d5290ab393483bd11006b907a898c699c05e0f2859a4a922f3772290e61a",
     "007-personal-notes-rls.sql": "c84c2aaac8cea0f11f6b96a39d61ea1726e8f86e98dd153a0725edc45e6e1ab0",
-    "008-small-object-delete.sql": "9aec782b8a3dcf32f22142fd2d5e9c6212e63cc62559848579b1b7db4fd55ac0"
+    "008-small-object-delete.sql": "9aec782b8a3dcf32f22142fd2d5e9c6212e63cc62559848579b1b7db4fd55ac0",
+    "009-personal-note-delete.sql": "be59845c3ad4cf003eb1703fc28d00c56c2e663c15517ee32363e0cd03f24dba"
   }
 }
