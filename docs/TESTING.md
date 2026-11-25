@@ -35,6 +35,7 @@ No tests claim live host hardening, TLS, data recovery, multiuser authentication
 - Concurrent data reads and writes with restrictive roles, migrations rollback and extensions compatibility.
 - Signed OIDC subject/scoped-write unit fixtures, and transaction-rolled-back PostgreSQL RLS ownership, delete-confirmation, cross-user deletion denial and per-owner quota checks for `gc_personal.notes` (not live Identity, platform-wide RLS or real-user consent acceptance); mobile TLS and certificate verification, configuration transitions and authorization expiry.
 - Logical dump and isolated-restore smoke through CI, including disposable NOLOGIN policy-role stubs and RLS-policy-preservation checks (not yet an off-host encrypted backup, PITR or measured RPO/RTO).
+- Ordered source migration SHA-256 manifest verification, no duplicate/gapped first-boot SQL invocations; not a verified existing-volume migration state or automated runner.
 - Dependency/license audit, source SBOM and reproducible pinned image digests.
 - React private-notes view and native Kotlin notes browser production/debug builds; physical-device, accessibility, signed-APK distribution and live IdP acceptance remain unverified.
 - Accessibility and device-specific QA; signer and APK distribution provenance.

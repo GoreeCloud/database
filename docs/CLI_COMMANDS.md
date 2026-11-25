@@ -221,6 +221,17 @@ sh scripts/personal_rls_smoke.sh --disposable
 - **Verification:** the CI RLS smoke confirms Alice cannot delete Bob's note, can delete Alice's note, and the viewer role lacks DELETE. API tests verify exact explicit confirmation and signed scopes.
 - **Limit:** no erasure from WAL/backups, no production consent/retention guarantee. See [privacy limits](PERSONAL_ERASURE.md).
 
+## Read-only SQL migration source integrity check
+
+```sh
+python3 scripts/check_migrations.py
+python3 scripts/check_migrations.py --json
+```
+
+- **Risk:** read-only; does not connect to a database, apply SQL, start containers, modify a manifest or read secrets. JSON reports source-only checksums, **not** applied migration versions.
+- **Verification:** protected CI asserts SHA256 manifest entries, contiguous order and exact fresh-volume bootstrap calls. Changed SQL requires a new reviewed migration and a reviewed manifest update.
+- **Limit:** an existing volume still needs separately verified migration state, backups, SQL review, explicit authorized `--apply` actions and rollback. See [migration integrity runbook](MIGRATION_INTEGRITY.md).
+
 ## Backup and isolated recovery drill
 
 ```sh
