@@ -19,6 +19,19 @@ The protected management API supports operator-controlled, read-only OIDC access
 - **Verification:** local ephemeral RSA-signature/claim tests and protected CI, not a live provider integration. All OIDC tokens have global reader scope only and cannot write or enforce PostgreSQL RLS.
 - **Rollback:** restore prior reviewed configuration, restart the API, verify legacy shared tokens still work and OIDC tokens fail after removing the trusted key.
 
+## Native and web OIDC notes client verification
+
+```sh
+# Read-only source/build verification, no database mutation:
+npm --prefix apps/web ci
+npm --prefix apps/web run build
+cd apps/android && ./gradlew :app:assembleDebug --no-daemon
+```
+
+- **Risk:** local dependency downloads and build outputs, no database writes. These steps do not install or distribute an APK.
+- **Verification:** TypeScript/Vite production bundle and native debug compile; no live identity provider/device acceptance is claimed. See [personal clients runbook](PERSONAL_CLIENTS.md).
+- **Prerequisites:** suitable Node/npm, Android SDK, Gradle/JDK. The native app still requires operator-provisioned OIDC tokens and an authorized HTTPS gateway.
+
 ## Operational liveness and readiness
 
 The local-only gateway provides two deliberately distinct, unauthenticated health probes:
