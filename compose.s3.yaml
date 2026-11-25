@@ -8,7 +8,9 @@ services:
       - mini
       - -dir=/data
       - -admin.allowInsecureBind=false
-      - -webdav.allowInsecureBind=false
+      # Pinned 4.54 supports these booleans; it does NOT support webdav.allowInsecureBind.
+      - -webdav=false
+      - -admin.ui=false
     environment:
       AWS_ACCESS_KEY_ID: ${GC_S3_ACCESS_KEY:?Run scripts/init_s3_env.py --apply}
       AWS_SECRET_ACCESS_KEY: ${GC_S3_SECRET_KEY:?Run scripts/init_s3_env.py --apply}
@@ -19,10 +21,16 @@ services:
       - "127.0.0.1:${GC_S3_PORT:-8333}:8333"
     volumes:
       - gc_s3_preview_data:/data
-    networks: [data, access]
+    # Dedicated S3 networks: do not attach to the PostgreSQL/API networks.
+    networks: [s3_private, s3_ingress]
     read_only: true
     tmpfs: [/tmp]
     security_opt: [no-new-privileges:true]
+
+networks:
+  s3_private:
+    internal: true
+  s3_ingress: {}
 
 volumes:
   gc_s3_preview_data:

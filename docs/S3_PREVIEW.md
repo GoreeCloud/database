@@ -7,8 +7,8 @@ This is a **separate, opt-in** S3-compatible object store using upstream open-so
 - The overlay starts **only** if the `s3-preview` Compose profile and overlay are explicitly selected. The normal `docker compose up` and web/Android interfaces do not start SeaweedFS.
 - Its S3 API binds to **127.0.0.1:8333 only**, configurable via `GC_S3_PORT`; there are **no host bindings** for master, filer, WebDAV, or Admin UI.
 - The service uses separate generated **S3 access/secret credentials** (SigV4) and a separate Admin password; it refuses partial/duplicate credential initialization. A signed client may access a single preview bucket `goreecloud-preview`.
-- `weed mini` Admin and WebDAV insecure binds are disabled with documented 4.54 flags. A readonly root FS, private persistent data volume, `no-new-privileges` and a temporary `/tmp` filesystem reduce unintended writes and privileges.
-- The container joins the project `data` internal network and `access` bridge to allow loopback port forwarding. **The access bridge can permit outbound network access**; this is not equivalent to an egress-isolated enclave. A production overlay must implement separate audited TLS, service/network policy and authorization.
+- The pinned `weed mini` 4.54 **disables WebDAV (`-webdav=false`) and the Admin UI (`-admin.ui=false`) outright**. The newer `-webdav.allowInsecureBind` flag is **not present** in 4.54 and must not be used. A read-only root filesystem, private persistent data volume, `no-new-privileges` and temporary `/tmp` filesystem reduce unintended writes and privileges.
+- The container uses **dedicated `s3_private` internal and `s3_ingress` bridge networks**, distinct from the PostgreSQL/API networks. Only the S3 port is published on host loopback. **The ingress bridge can permit outbound network access**; it is not an egress-isolated enclave. A production overlay requires separately audited TLS and traffic policy.
 - The one-node mini service is **not replicated**, is **not an encrypted/backed-up storage guarantee**, has no tenant-scoped IAM/STS policy design accepted by GoreeShield or Wardveil, and must not hold sensitive or irreplaceable data.
 
 ## Local development instructions
@@ -40,7 +40,7 @@ Never paste the generated credentials, `.env`, S3 authorization headers, or sign
 
 ## Disposable CI acceptance
 
-The optional `s3-preview` GitHub Actions job creates a **new disposable** private `.env`, starts only the SeaweedFS overlay on loopback, uses Python boto3 with SigV4 to verify bucket listing, PUT, GET, LIST and DELETE of a randomly named test object, and asserts that an unsigned listing is rejected. After verification it stops containers without removing named volumes. GitHub-hosted job storage is ephemeral; this is not a production backup/recovery test.
+The optional `s3-preview` GitHub Actions job creates a **new disposable** private `.env`, starts only the SeaweedFS overlay on loopback, uses Python boto3 with SigV4 to verify bucket listing, PUT, GET, LIST and DELETE of a randomly named test object, and asserts that an unsigned listing is rejected. It must not be merged until this **actual container integration** passes; a successful Compose YAML parse alone is insufficient. After verification it stops containers without removing named volumes. GitHub-hosted job storage is ephemeral; this is not a production backup/recovery test.
 
 The test does not claim a live Android/web integration, per-user bucket ACL, data lifecycle, encryption-at-rest, MFA, public ingress security or full S3 API compatibility matrix.
 
