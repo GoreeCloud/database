@@ -8,7 +8,7 @@ This is an independently developed GoreeCloud integration. It does **not** claim
 
 - PostgreSQL 17.12 persistent database, private container network and role-scoped bootstrap.
 - PostgREST 16.6 read-only sample REST endpoint, proxied through the loopback-only web console.
-- FastAPI management API with required bearer token, allowlisted `app` schema, table discovery, paginated row reads and parameterized inserts.
+- FastAPI management API with distinct administrator and read-only bearer tokens, separate PostgreSQL read and write roles, allowlisted `app` schema, table discovery, paginated row reads and parameterized inserts.
 - React/TypeScript browser console using the verified GoreeCloud UI alpha semantic palette (no copied stable design claims).
 - Kotlin/Jetpack Compose Android app for HTTPS management API table browsing, with in-memory credentials.
 - Container configuration, secret generation, guarded custom-format PostgreSQL backup, network-isolated restore drill, tests, GitHub Actions, architecture and security guidance.
@@ -26,9 +26,9 @@ docker compose up -d --build
 docker compose ps
 ```
 
-The console is at http://127.0.0.1:4173 (or `WEB_PORT`). Copy `GC_ADMIN_TOKEN` privately from your local `.env` and enter it in the console; it is held in memory, not localStorage. The read-only demonstration REST endpoint is `http://127.0.0.1:4173/rest/catalog` (only the seeded `app.catalog` table is granted anonymous SELECT). No PostgreSQL port is published.
+The console is at http://127.0.0.1:4173 (or `WEB_PORT`). Copy `GC_ADMIN_TOKEN` (read/write) or `GC_READ_TOKEN` (read-only) privately from your local `.env` and enter it in the console; tokens remain in memory, not localStorage. The console fetches `/api/v1/session` to disable mutation controls for viewers. The read-only demonstration REST endpoint is `http://127.0.0.1:4173/rest/catalog` (only the seeded `app.catalog` table is granted anonymous SELECT). No PostgreSQL port is published.
 
-The sample catalog table is created **only on first database volume initialization**. Changing `.env` after initialization does not rotate database role passwords. Use explicit SQL role rotation and update secrets together; never erase persistent volumes to solve a credentials problem.
+The sample catalog table is created **only on first database volume initialization**. Changing `.env` after initialization does not rotate database role passwords. Existing PostgreSQL volumes require the additive [read-only role migration](docs/READ_ONLY_ACCESS.md) after an independently verified backup; this migration does not rotate existing credentials. Never erase persistent volumes to solve a credentials problem.
 
 ```sh
 docker compose logs --tail=60
@@ -44,7 +44,7 @@ For web-only development: `cd apps/web && npm install && npm run dev`; Vite prox
 - `apps/api`: authenticated control API.
 - `apps/web`: browser management console.
 - `apps/android`: Kotlin/Jetpack Compose Android management client.
-- `scripts`: local secret setup, guarded logical backup, isolated recovery drill and tests. See [recovery runbook](docs/BACKUP_AND_RECOVERY.md).
+- `scripts`: local secret setup, explicit read-role migration, guarded logical backup and isolated recovery drill. See [access upgrade](docs/READ_ONLY_ACCESS.md) and [recovery runbook](docs/BACKUP_AND_RECOVERY.md).
 - `docs`: architecture, threat model, roadmap, component licenses, recovery limitations.
 
 ## Security boundaries
@@ -53,7 +53,7 @@ The only published port is the web console on **127.0.0.1**, routing REST throug
 
 ## Integrated platform systems
 
-GoreeCloud UI: alpha semantic tokens taken from verified `GoreeCloud/gc-ui` (not declared stable). GoreeCloud Mesh: candidate API contract only, **not connected**. GoreeCloud Identity: admin bearer token placeholder pending real identity integration. GoreeShield: data minimization and local-only defaults; policy enforcement is partial. Wardveil: threat boundaries and CI checks; no integration or formal security certification.
+GoreeCloud UI: alpha semantic tokens taken from verified `GoreeCloud/gc-ui` (not declared stable). GoreeCloud Mesh: candidate API contract only, **not connected**. GoreeCloud Identity: distinct shared admin/viewer bearer tokens as a preview fallback, **not** an integrated user identity platform. GoreeShield: data minimization and local-only defaults; policy enforcement is partial. Wardveil: threat boundaries and CI checks; no integration or formal security certification.
 
 ## Open-source attribution
 

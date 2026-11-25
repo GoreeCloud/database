@@ -29,6 +29,7 @@ function display(value: unknown): string {
 export default function App() {
   const [entry, setEntry] = useState('')
   const [token, setToken] = useState('')
+  const [scope, setScope] = useState<'unknown' | 'admin' | 'reader'>('unknown')
   const [tables, setTables] = useState<Table[]>([])
   const [selected, setSelected] = useState<Table | null>(null)
   const [data, setData] = useState<Rows | null>(null)
@@ -37,6 +38,16 @@ export default function App() {
   const [loading, setLoading] = useState(false)
   const [insertOpen, setInsertOpen] = useState(false)
   const [payload, setPayload] = useState('{"slug":"example","description":"Created in GoreeCloud Database"}')
+
+  useEffect(() => {
+    if (!token) { setScope('unknown'); return }
+    let active = true
+    setScope('unknown')
+    api<{ scope: 'admin' | 'reader' }>('/v1/session', token)
+      .then(result => { if (active) setScope(result.scope === 'admin' ? 'admin' : 'reader') })
+      .catch(() => { if (active) setScope('unknown') })
+    return () => { active = false }
+  }, [token])
 
   const loadTables = useCallback(async (currentToken: string) => {
     setLoading(true)
@@ -76,7 +87,7 @@ export default function App() {
 
   async function addRow(event: FormEvent) {
     event.preventDefault()
-    if (!selected) return
+    if (!selected || scope !== 'admin') return
     try {
       const obj: unknown = JSON.parse(payload)
       if (obj === null || Array.isArray(obj) || typeof obj !== 'object') throw new Error('Enter a JSON object')
@@ -92,6 +103,8 @@ export default function App() {
 
   function disconnect() {
     setToken('')
+    setScope('unknown')
+    setInsertOpen(false)
     setEntry('')
     setSelected(null)
     setTables([])
@@ -104,10 +117,10 @@ export default function App() {
       <div className="logo-mark" aria-hidden="true">G</div>
       <p className="eyebrow">GOREECLOUD · SELF-HOSTED</p>
       <h1>Database control, without the cloud dependency.</h1>
-      <p className="muted">Connect to your local management API with the generated administration token. This preview does not store the token on disk.</p>
+      <p className="muted">Connect with the generated administrator or viewer token. The viewer token cannot insert rows. This preview does not store credentials on disk.</p>
       <form onSubmit={connect} className="stack">
-        <label htmlFor="token">Administration token</label>
-        <input autoFocus id="token" type="password" autoComplete="off" value={entry} onChange={e => setEntry(e.target.value)} placeholder="Paste GC_ADMIN_TOKEN" />
+        <label htmlFor="token">Admin or read-only token</label>
+        <input autoFocus id="token" type="password" autoComplete="off" value={entry} onChange={e => setEntry(e.target.value)} placeholder="Paste GC_ADMIN_TOKEN or GC_READ_TOKEN" />
         <button type="submit" disabled={!entry.trim()}>Connect to database</button>
       </form>
       <p className="hint">Local development preview · Never expose this console directly to the Internet.</p>
@@ -130,10 +143,10 @@ export default function App() {
     <main className="content">
       <header className="topbar"><span>Workspace <span className="chevron">/</span> app <span className="chevron">/</span> {selected?.name ?? 'Tables'}</span><span className="preview-pill">DEVELOPMENT PREVIEW</span></header>
       <div className="main-inner">
-        <div className="heading-row"><div><p className="eyebrow">POSTGRESQL / SCHEMA EXPLORER</p><h1>{selected?.name ?? 'Your database'}</h1><p className="muted">Inspect and manage your application data with parameterized operations.</p></div><div className="actions"><button className="secondary" onClick={() => { if (selected) setSelected({ ...selected }); else void loadTables(token) }} disabled={loading}>↻ Refresh</button><button onClick={() => setInsertOpen(open => !open)} disabled={!selected}>+ Insert row</button></div></div>
+        <div className="heading-row"><div><p className="eyebrow">POSTGRESQL / SCHEMA EXPLORER</p><h1>{selected?.name ?? 'Your database'}</h1><p className="muted">Inspect and manage your application data with parameterized operations.</p></div><div className="actions"><button className="secondary" onClick={() => { if (selected) setSelected({ ...selected }); else void loadTables(token) }} disabled={loading}>↻ Refresh</button><button onClick={() => setInsertOpen(open => !open)} disabled={!selected || scope !== 'admin'}>{scope === 'reader' ? 'Read-only access' : '+ Insert row'}</button></div></div>
         {message && <div role="status" className="alert">{message} <button className="dismiss" onClick={() => setMessage('')}>Dismiss</button></div>}
-        <div className="stat-grid"><div className="stat"><span>Tables available</span><strong>{tables.length}</strong><small>App schema</small></div><div className="stat"><span>Page size</span><strong>25</strong><small>Rows per request</small></div><div className="stat"><span>Connection</span><strong className="connected"><span className="status-dot" /> Secured</strong><small>Bearer token · current session</small></div></div>
-        {insertOpen && <form className="insert-panel" onSubmit={addRow}><h2>Insert JSON row</h2><p className="muted">Flat JSON keys must match existing columns. Database constraints remain authoritative.</p><textarea aria-label="JSON row" spellCheck={false} value={payload} onChange={e => setPayload(e.target.value)} rows={4}/><button type="submit">Insert row</button></form>}
+        <div className="stat-grid"><div className="stat"><span>Tables available</span><strong>{tables.length}</strong><small>App schema</small></div><div className="stat"><span>Page size</span><strong>25</strong><small>Rows per request</small></div><div className="stat"><span>Connection</span><strong className="connected"><span className="status-dot" /> Secured</strong><small>{scope === 'admin' ? 'Admin · read/write' : scope === 'reader' ? 'Viewer · read-only' : 'Verifying access…'}</small></div></div>
+        {insertOpen && scope === 'admin' && <form className="insert-panel" onSubmit={addRow}><h2>Insert JSON row</h2><p className="muted">Flat JSON keys must match existing columns. Database constraints remain authoritative.</p><textarea aria-label="JSON row" spellCheck={false} value={payload} onChange={e => setPayload(e.target.value)} rows={4}/><button type="submit">Insert row</button></form>}
         <section className="data-panel" aria-label="Database rows">
           <div className="panel-header"><div><h2>Table data</h2><p>{selected ? `app.${selected.name}` : 'No table selected'}</p></div><span className="pill">{loading ? 'Loading…' : `${data?.rows.length ?? 0} rows`}</span></div>
           <div className="table-wrap">

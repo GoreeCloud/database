@@ -1,5 +1,6 @@
-"""Management-token authentication and request input validation."""
+"""Management and read-only token authentication with fail-closed configuration."""
 from __future__ import annotations
+
 import hmac
 import os
 import re
@@ -11,22 +12,46 @@ SCHEMA = "app"
 
 
 def require_configuration() -> str:
-    token = os.environ.get("GC_ADMIN_TOKEN", "")
-    if len(token) < 32 or token.startswith("REPLACE_"):
+    admin = os.environ.get("GC_ADMIN_TOKEN", "")
+    read = os.environ.get("GC_READ_TOKEN", "")
+    if len(admin) < 32 or admin.startswith("REPLACE_"):
         raise RuntimeError("GC_ADMIN_TOKEN must be an unpredictable secret of >=32 characters")
-    for key in ("DB_HOST", "DB_NAME", "DB_USER", "DB_PASSWORD"):
+    if len(read) < 32 or read.startswith("REPLACE_"):
+        raise RuntimeError("GC_READ_TOKEN must be an unpredictable secret of >=32 characters")
+    if hmac.compare_digest(admin, read):
+        raise RuntimeError("Admin and read tokens must be distinct")
+    for key in ("DB_HOST", "DB_NAME", "DB_USER", "DB_PASSWORD", "DB_READ_USER", "DB_READ_PASSWORD"):
         if not os.environ.get(key):
             raise RuntimeError(f"{key} is required")
-    return token
+    return admin
+
+
+def _bearer(authorization: str | None) -> str:
+    if not authorization or not authorization.startswith("Bearer ") or len(authorization) < 9:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Bearer token required")
+    return authorization[7:]
+
+
+def current_scope(authorization: str | None = Header(default=None)) -> str:
+    admin = require_configuration()
+    read = os.environ["GC_READ_TOKEN"]
+    candidate = _bearer(authorization)
+    is_admin = hmac.compare_digest(candidate, admin)
+    is_reader = hmac.compare_digest(candidate, read)
+    if is_admin:
+        return "admin"
+    if is_reader:
+        return "reader"
+    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
 
 def require_admin(authorization: str | None = Header(default=None)) -> None:
-    expected = require_configuration()
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Bearer token required")
-    candidate = authorization[7:]
-    if not hmac.compare_digest(candidate, expected):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+    if current_scope(authorization) != "admin":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Administrator token required")
+
+
+def require_read(authorization: str | None = Header(default=None)) -> None:
+    current_scope(authorization)
 
 
 def check_identifier(value: str) -> str:
