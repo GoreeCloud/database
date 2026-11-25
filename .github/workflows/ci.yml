@@ -59,7 +59,9 @@ jobs:
       - run: python3 scripts/init_env.py
       - run: python3 scripts/verify_repo.py
       - run: python3 scripts/check_migrations.py
+      - run: python3 scripts/init_s3_env.py --apply
       - run: docker compose config --quiet
+      - run: docker compose -f compose.yaml -f compose.s3.yaml --profile s3-preview config --quiet
       - run: test -f .env && ! git ls-files --error-unmatch .env
   integration:
     runs-on: ubuntu-latest
@@ -123,3 +125,33 @@ jobs:
       - name: Stop disposable stack (preserve volume for job cleanup)
         if: always()
         run: docker compose down
+
+  s3-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Generate isolated local test credentials
+        run: |
+          python3 scripts/init_env.py
+          python3 scripts/init_s3_env.py --apply
+      - name: Validate opt-in S3 Compose overlay
+        run: docker compose -f compose.yaml -f compose.s3.yaml --profile s3-preview config --quiet
+      - name: Install dedicated S3 protocol test client
+        run: python3 -m pip install 'boto3>=1.40,<2'
+      - name: Start disposable private SeaweedFS S3 sandbox
+        run: docker compose -f compose.yaml -f compose.s3.yaml --profile s3-preview up -d seaweedfs
+      - name: Verify SigV4 PUT, GET, LIST and DELETE; deny unsigned bucket listing
+        run: |
+          set -a
+          . ./.env
+          set +a
+          python3 scripts/s3_preview_smoke.py --disposable
+      - name: Check container status on failure without printing credential-bearing logs
+        if: failure()
+        run: docker compose -f compose.yaml -f compose.s3.yaml --profile s3-preview ps
+      - name: Stop S3 sandbox without removing persistent volumes
+        if: always()
+        run: docker compose -f compose.yaml -f compose.s3.yaml --profile s3-preview down

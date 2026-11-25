@@ -1,0 +1,28 @@
+# Opt-in standalone S3 protocol sandbox. This does NOT replace PostgreSQL
+# gc_storage.objects or connect the current management API to SeaweedFS.
+services:
+  seaweedfs:
+    image: chrislusf/seaweedfs:4.54
+    profiles: [s3-preview]
+    command:
+      - mini
+      - -dir=/data
+      - -admin.allowInsecureBind=false
+      - -webdav.allowInsecureBind=false
+    environment:
+      AWS_ACCESS_KEY_ID: ${GC_S3_ACCESS_KEY:?Run scripts/init_s3_env.py --apply}
+      AWS_SECRET_ACCESS_KEY: ${GC_S3_SECRET_KEY:?Run scripts/init_s3_env.py --apply}
+      WEED_ADMIN_PASSWORD: ${GC_S3_ADMIN_PASSWORD:?Run scripts/init_s3_env.py --apply}
+      S3_BUCKET: goreecloud-preview
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${GC_S3_PORT:-8333}:8333"
+    volumes:
+      - gc_s3_preview_data:/data
+    networks: [data, access]
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+
+volumes:
+  gc_s3_preview_data:

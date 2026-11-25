@@ -14,7 +14,7 @@ The repository contains **first-party glue code**, deployment configuration, web
 | React | `^19.1.1` | https://github.com/facebook/react | MIT | Web dependency |
 | Vite | `^7.1.0` | https://github.com/vitejs/vite | MIT | Web toolchain |
 | Kotlin / Compose | Gradle-configured | https://kotlinlang.org/ / https://developer.android.com/compose | Apache-2.0 | Android framework |
-| SeaweedFS | Candidate only | https://github.com/seaweedfs/seaweedfs | Apache-2.0 | **Not integrated** |
+| SeaweedFS | Opt-in Docker image `chrislusf/seaweedfs:4.54` | https://github.com/seaweedfs/seaweedfs | Apache-2.0 | Separate signed S3 protocol sandbox, **not yet connected to Database storage APIs** |
 | Supabase Auth / GoTrue | Candidate only | https://github.com/supabase/auth | MIT | **Not integrated** |
 
 Image tags and bounded Python versions are a development baseline, not immutable digests or locked whole dependency graphs. Before a public release, lock image digests, regenerate dependency locks and verify notices. Do not conflate links to upstream source with a vendored copy or GoreeCloud-authored source.
