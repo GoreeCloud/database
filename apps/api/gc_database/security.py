@@ -9,6 +9,7 @@ from fastapi import Header, HTTPException, status
 
 from .oidc import READ_SCOPE, WRITE_SCOPE, oidc_reader_authorized, oidc_settings, oidc_subject
 from .rate_limits import admin_write_throttle
+from .personal_rate_limits import personal_note_write_throttle
 
 IDENTIFIER_RE = re.compile(r"^[a-z_][a-z0-9_]{0,62}$")
 SCHEMA = "app"
@@ -74,6 +75,7 @@ def require_personal_write(authorization: str | None = Header(default=None)) -> 
     subject = oidc_subject(_bearer(authorization), (READ_SCOPE, WRITE_SCOPE))
     if subject is None:
         raise HTTPException(status_code=401, detail="Verified personal note write scope required")
+    personal_note_write_throttle.check(subject)
     return subject
 
 

@@ -254,6 +254,17 @@ docker compose -f compose.yaml -f compose.s3.yaml --profile s3-preview stop seaw
 - **Verification:** separate CI job exercises signed S3 protocol PUT/GET/LIST/DELETE, unsigned-denial and safe cleanup. It does **not** change the PostgreSQL object API or enable production S3 storage.
 - **Gaps:** no real bucket ACL/tenant Identity integration, TLS release, data migration, encrypted backup or real Android/web object-client S3 acceptance.
 
+## Personal-note write throttle regression tests
+
+```sh
+# Local, ephemeral JWT fixtures; no live database writes:
+PYTHONPATH=apps/api python3 -m pytest apps/api/tests/test_personal_rate_limits.py -q
+```
+
+- **Risk:** local developer test only; no live OIDC provider, VPS, production data or credential file mutation. Requires installed test dependencies.
+- **Verification:** parallel signed-subject quota admission, 429/Retry-After, no plaintext subject retention and unaffected personal reads. See [throttle runbook](PERSONAL_WRITE_THROTTLE.md).
+- **Limit:** not a global or distributed per-identity quota, no Wardveil alerts or GoreeShield approval.
+
 ## Backup and isolated recovery drill
 
 ```sh
