@@ -46,7 +46,15 @@ def database_error(_request: Request, exception: DatabaseError):
 
 @app.get("/healthz")
 def health() -> dict[str, str]:
+    """Process liveness only: does not imply database connectivity."""
     return {"status": "online"}
+
+
+@app.get("/readyz")
+def readiness() -> dict[str, str]:
+    """Read-only database readiness; never returns connection or identity details."""
+    store.check_database_readiness()
+    return {"status": "ready"}
 
 
 @app.get("/v1/session")

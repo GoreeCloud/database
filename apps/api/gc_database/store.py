@@ -27,6 +27,14 @@ def connection(read_only: bool = False):
         yield db
 
 
+def check_database_readiness() -> None:
+    """Check a real SELECT-only connection without disclosing schema or data."""
+    with connection(read_only=True) as db, db.cursor() as cur:
+        cur.execute("SELECT 1")
+        if cur.fetchone() is None:
+            raise psycopg.OperationalError("Readiness query returned no row")
+
+
 def list_tables() -> list[dict[str, Any]]:
     with connection(read_only=True) as db, db.cursor() as cur:
         cur.execute(
