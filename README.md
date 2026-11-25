@@ -47,7 +47,7 @@ For web-only development: `cd apps/web && npm install && npm run dev`; Vite prox
 - `apps/web`: browser management console.
 - `apps/android`: Kotlin/Jetpack Compose Android management client.
 - `scripts`: local secret setup, explicit read-role/catalog-event migrations, guarded logical backup and isolated restore drill. See [access upgrade](docs/READ_ONLY_ACCESS.md), [realtime preview](docs/REALTIME_PREVIEW.md), [small-object storage](docs/SMALL_OBJECTS.md) and [recovery runbook](docs/BACKUP_AND_RECOVERY.md).
-- `docs`: architecture, threat model, roadmap, component licenses, recovery limitations.
+- `docs`: architecture, security and dependency reviews, recovery limitations, plus the [source CLI command runbook](docs/CLI_COMMANDS.md). The canonical CLI command registry remains the governed Google Drive `GoreeCloud/CLI Commands/` directory.
 
 ## Security boundaries
 
