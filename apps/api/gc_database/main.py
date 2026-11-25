@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from psycopg import Error as DatabaseError
 
 from . import store
+from .realtime import open_catalog_event_stream
 from .security import current_scope, require_admin, require_read, require_configuration, check_schema, check_identifier
 
 log = logging.getLogger("goreecloud.database")
@@ -49,6 +50,11 @@ def health() -> dict[str, str]:
 @app.get("/v1/session")
 def session(scope: str = Depends(current_scope)):
     return {"scope": scope, "permissions": ["read", "write"] if scope == "admin" else ["read"]}
+
+
+@app.get("/v1/events/catalog", dependencies=[Depends(require_read)])
+async def stream_catalog_changes():
+    return await open_catalog_event_stream()
 
 
 @app.get("/v1/tables", dependencies=[Depends(require_read)])

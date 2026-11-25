@@ -35,3 +35,4 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA app
   GRANT USAGE, SELECT ON SEQUENCES TO gc_api;
 SQL
 psql -X --set=ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" --file=/migrations/002-readonly.sql
+psql -X --set=ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" --file=/migrations/003-catalog-events.sql

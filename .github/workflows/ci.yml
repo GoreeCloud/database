@@ -71,6 +71,12 @@ jobs:
           . ./.env
           set +a
           sh scripts/smoke.sh
+      - name: Verify authenticated catalog SSE
+        run: |
+          set -a
+          . ./.env
+          set +a
+          python3 scripts/realtime_smoke.py
       - name: Verify guarded backup CLI and isolated recovery drill
         run: |
           python3 -m unittest discover -s scripts -p "test_*.py"

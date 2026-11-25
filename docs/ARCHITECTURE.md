@@ -19,6 +19,7 @@ Database data persists in named volume `pg_data`. The `GC_ADMIN_TOKEN` is the sh
 
 - `GET /api/healthz` — process liveness only, unauthenticated; not a full DB readiness guarantee.
 - `GET /api/v1/session` — authenticate and return `admin` or `reader` capability information without disclosing credentials.
+- `GET /api/v1/events/catalog` — bounded SSE notifications for catalog INSERT/UPDATE/DELETE metadata only; no replay or user authorization beyond shared preview tokens.
 - `GET /api/v1/tables` — list user tables in `app` schema.
 - `GET /api/v1/tables/app/{table}/rows?limit=25&offset=0` — read first 1–100 rows per page, no caller SQL.
 - `POST /api/v1/tables/app/{table}/rows` — insert a flat JSON object using bound parameters; DB constraints enforce integrity.
