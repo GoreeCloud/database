@@ -31,7 +31,7 @@ No tests claim live host hardening, TLS, data recovery, multiuser authentication
 
 ## Planned acceptance
 
-- Verified PostgreSQL init roles, psql/REST read and management token rejection.
+- Verified PostgreSQL init roles, psql/REST read, read-only schema inspector and management token rejection.
 - Concurrent data reads and writes with restrictive roles, migrations rollback and extensions compatibility.
 - Mobile TLS and certificate verification, configuration transitions, authorization expiry.
 - Logical dump and isolated-restore smoke through CI (not yet an off-host encrypted backup, PITR or measured RPO/RTO).
