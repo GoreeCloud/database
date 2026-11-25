@@ -63,6 +63,13 @@ def tables():
     return {"tables": store.list_tables()}
 
 
+@app.get("/v1/tables/{schema}/{table}/schema", dependencies=[Depends(require_read)])
+def describe_schema(schema: str, table: str):
+    check_schema(schema)
+    check_identifier(table)
+    return jsonable_encoder(store.describe_table(schema, table))
+
+
 @app.get("/v1/tables/{schema}/{table}/rows", dependencies=[Depends(require_read)])
 def rows(schema: str, table: str, limit: int = Query(25, ge=1, le=100), offset: int = Query(0, ge=0, le=1000000)):
     check_schema(schema)
