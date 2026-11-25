@@ -185,9 +185,26 @@ sh scripts/apply_personal_rls_migration.sh --apply
 sh scripts/personal_rls_smoke.sh --disposable
 ```
 
-- **Risk:** adds private PostgreSQL table, RLS policies and a quota trigger; this is a schema and policy mutation, not authorization to migrate existing sensitive tables. Inspect role grants, backups, policy SQL, current issuer and rollback before use.
-- **Verification:** RLS fails closed with no signed subject, isolates Alice and Bob, rejects forged-owner INSERT, and limits to 100 notes per subject. Test writes are rolled back.
-- **Limit:** a private preview notes table only; general app/object schemas retain existing shared-token behavior. See [RLS demonstration](PERSONAL_RLS.md).
+- **Risk:** adds private PostgreSQL table, RLS policies and a quota trigger; do not use on unreviewed sensitive datasets.
+- **Verification:** RLS fails closed with no signed subject, isolates Alice and Bob, rejects forged owner INSERT, limits to 100 notes and rolls back disposable test rows.
+- **Limit:** a private preview notes table only, not platform-wide RLS. See [RLS demonstration](PERSONAL_RLS.md).
+
+## Safe single-object deletion privilege and disposable contract
+
+```sh
+# Read-only usage check:
+sh scripts/apply_object_delete_migration.sh
+# Only after independently verified backup, SQL and authorization:
+sh scripts/apply_object_delete_migration.sh --apply
+
+# **Disposable database only**, changes one ephemeral test object:
+set -a; . ./.env; set +a
+python3 scripts/object_deletion_smoke.py --disposable
+```
+
+- **Risk:** migration changes DELETE privileges on private objects; the API deletion endpoint is irreversible from the live database. Verify backup/rollback and never run the disposable contract script against important volumes.
+- **Verification:** viewer deletion denied, explicit confirmation and expected SHA-256 required, one-row DELETE returns 204, subsequent GET returns 404, metadata-only DELETE audit event verified.
+- **Limit:** no soft-delete, per-user object ownership or erasure from backups/WAL. See [object deletion runbook](OBJECT_DELETION.md).
 
 ## Backup and isolated recovery drill
 

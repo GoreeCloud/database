@@ -37,6 +37,7 @@ export default function ObjectPanel({ token, scope }: { token: string, scope: Sc
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
   const [loaded, setLoaded] = useState(false)
+  const [pendingDelete, setPendingDelete] = useState<StoredObject | null>(null)
 
   const reload = useCallback(async () => {
     if (!token) return
@@ -59,6 +60,7 @@ export default function ObjectPanel({ token, scope }: { token: string, scope: Sc
     setLoaded(false)
     // Do not automatically disclose object metadata until the user opens the section.
     setFile(null)
+    setPendingDelete(null)
   }, [token])
 
   async function upload(event: FormEvent) {
@@ -107,6 +109,31 @@ export default function ObjectPanel({ token, scope }: { token: string, scope: Sc
     }
   }
 
+  async function deleteConfirmed() {
+    if (scope !== 'admin' || !pendingDelete || busy) return
+    const item = pendingDelete
+    setBusy(true)
+    try {
+      await fetchAuthenticated('/v1/objects/' + encodeURIComponent(item.id), token, {
+        method: 'DELETE',
+        headers: {
+          'X-GC-Confirm-Delete': 'permanently-delete',
+          'X-GC-Expected-SHA256': item.sha256,
+        },
+      })
+      setPendingDelete(null)
+      const response = await fetchAuthenticated('/v1/objects?limit=50', token)
+      const data = await response.json() as { objects: StoredObject[] }
+      setObjects(data.objects)
+      setLoaded(true)
+      setMessage('Object permanently removed from the active database. Backups may retain copies.')
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Unable to delete object')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return <section className="data-panel object-panel" aria-label="Private small objects">
     <div className="panel-header">
       <div><h2>Small objects</h2><p>Private schema · 1 MiB maximum · shared viewer access</p></div>
@@ -119,11 +146,26 @@ export default function ObjectPanel({ token, scope }: { token: string, scope: Sc
       <button type="submit" disabled={busy || !file}>Upload object</button>
     </form>}
     {message && <p className="object-message" role="status">{message}</p>}
+    {scope === 'admin' && pendingDelete && <div className="object-delete-confirm" role="alertdialog"
+      aria-label="Confirm permanent deletion" aria-describedby="object-delete-details">
+      <strong>Confirm permanent deletion</strong>
+      <p id="object-delete-details">Remove the active database copy of <strong>{pendingDelete.filename}</strong>?
+        This cannot be undone. Existing backups and snapshots may still contain copies.</p>
+      <p className="object-delete-digest">Expected SHA-256: <code>{pendingDelete.sha256}</code></p>
+      <div className="actions">
+        <button className="secondary small" disabled={busy} onClick={() => setPendingDelete(null)}>Cancel</button>
+        <button className="small" disabled={busy} onClick={() => void deleteConfirmed()}>
+          {busy ? 'Deleting…' : 'Permanently delete'}
+        </button>
+      </div>
+    </div>}
     {loaded ? <div className="table-wrap">
       {objects.length ? <table><thead><tr><th>Filename</th><th>Size</th><th>Media type</th><th>Action</th></tr></thead>
         <tbody>{objects.map(item => <tr key={item.id}>
           <td>{item.filename}</td><td>{item.size_bytes.toLocaleString()} bytes</td><td>{item.media_type}</td>
-          <td><button className="secondary small" disabled={busy} onClick={() => void download(item)}>Save</button></td>
+          <td><button className="secondary small" disabled={busy} onClick={() => void download(item)}>Save</button>
+            {scope === 'admin' && <button className="secondary small" disabled={busy}
+              onClick={() => { setPendingDelete(item); setMessage('') }}>Delete</button>}</td>
         </tr>)}</tbody></table> : <p className="empty">No objects yet.</p>}
     </div> : <div className="empty">Choose Refresh objects to inspect stored attachments.</div>}
   </section>

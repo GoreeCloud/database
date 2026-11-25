@@ -16,7 +16,7 @@ The Jetpack Compose Android management app adds a "Small objects" view listing u
 
 - **All viewer credentials can read all objects**; this is intentionally not a per-user sharing system.
 - MIME types are checked by declared media type but **there is no server-side content sniffing or malware scanning**.
-- The PostgreSQL storage subsystem has **no per-tenant ACL, total quota, retention/deletion UI, revision history or object encryption key management**.
+- The PostgreSQL storage subsystem has a global 512-object/128 MiB quota and an administrator-only [two-step single-object deletion UI](OBJECT_DELETION.md), but **no per-tenant ACL, governed retention, reversible erasure, revision history or object encryption key management**.
 - Real device TLS, file saving, backup/restore of large object sets, accessibility, memory pressure and browser behaviour must be tested beyond compilation before any stable Android/web release.
 - A production S3-compatible backend and independently verified identity enforcement remain on [issue #7](https://github.com/GoreeCloud/database/issues/7).
 

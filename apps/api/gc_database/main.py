@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, Header
 from fastapi.responses import Response
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
@@ -178,6 +178,18 @@ async def upload_private_object(request: Request, filename: str = Query(...)):
     if not content:
         raise HTTPException(status_code=422, detail="Empty objects are not supported")
     return jsonable_encoder({"object": storage.save_object(filename, media_type, bytes(content))})
+
+
+@app.delete("/v1/objects/{object_id}", status_code=204, dependencies=[Depends(require_admin)])
+def delete_private_object(
+    object_id: str,
+    x_confirm: str | None = Header(default=None, alias="X-GC-Confirm-Delete"),
+    x_expected_sha256: str | None = Header(default=None, alias="X-GC-Expected-SHA256"),
+):
+    if x_confirm != "permanently-delete" or x_expected_sha256 is None:
+        raise HTTPException(status_code=428, detail="Explicit confirmation and expected checksum required")
+    storage.delete_object(object_id, x_expected_sha256)
+    return Response(status_code=204)
 
 
 @app.get("/v1/objects/{object_id}", dependencies=[Depends(require_read)])
