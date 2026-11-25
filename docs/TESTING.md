@@ -33,7 +33,7 @@ No tests claim live host hardening, TLS, data recovery, multiuser authentication
 
 - Verified PostgreSQL init roles, separate API liveness/readiness probes, psql/REST read, authenticated bounded CSV export, read-only schema inspection and management token rejection.
 - Concurrent data reads and writes with restrictive roles, migrations rollback and extensions compatibility.
-- Mobile TLS and certificate verification, configuration transitions, authorization expiry.
+- Opt-in OIDC RSA JWT unit fixtures (no real Identity provider, external network, login redirects or user-scoped RLS); mobile TLS and certificate verification, configuration transitions, authorization expiry.
 - Logical dump and isolated-restore smoke through CI (not yet an off-host encrypted backup, PITR or measured RPO/RTO).
 - Dependency/license audit, source SBOM and reproducible pinned image digests.
 - Accessibility and device-specific QA; signer and APK distribution provenance.
