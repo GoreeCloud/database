@@ -61,6 +61,15 @@ def main() -> int:
             time.sleep(1)
         if not ready:
             raise RuntimeError("Isolated database did not become ready")
+        # --no-owner and --no-acl still restore RLS policies referencing roles.
+        # Only this disposable container gets NOLOGIN role placeholders.
+        created_roles = run([
+            "docker", "exec", name, "psql", "-U", "postgres", "-d", "postgres",
+            "-X", "-v", "ON_ERROR_STOP=1",
+            "-c", "CREATE ROLE gc_reader NOLOGIN; CREATE ROLE gc_api NOLOGIN;",
+        ])
+        if created_roles.returncode:
+            raise RuntimeError("Isolated policy role preparation failed")
         with path.open("rb") as archive:
             restored = run([
                 "docker", "exec", "-i", name, "pg_restore", "--username", "postgres",
@@ -75,6 +84,21 @@ def main() -> int:
         ])
         if probe.returncode:
             raise RuntimeError("Post-restore schema integrity probe failed")
+        # A backup with the private notes schema must preserve FORCE RLS and
+        # owner policies after --no-owner / --no-acl restore. Older archives
+        # without this optional table still pass the catalog-only probe.
+        rls_probe = run([
+            "docker", "exec", name, "psql", "-U", "postgres", "-d", "postgres",
+            "-X", "-v", "ON_ERROR_STOP=1", "-c",
+            "DO $$ BEGIN IF to_regclass('gc_personal.notes') IS NOT NULL THEN "
+            "IF NOT EXISTS (SELECT 1 FROM pg_class WHERE oid = to_regclass('gc_personal.notes') "
+            "AND relrowsecurity AND relforcerowsecurity) "
+            "OR (SELECT count(*) FROM pg_policies WHERE schemaname = 'gc_personal' "
+            "AND tablename = 'notes') < 2 THEN "
+            "RAISE EXCEPTION 'Private RLS policy not restored'; END IF; END IF; END $$;",
+        ])
+        if rls_probe.returncode:
+            raise RuntimeError("Post-restore RLS policy probe failed")
         print(f"Restore verified in disposable, disconnected PostgreSQL {IMAGE}; container removed.")
         return 0
     except (OSError, RuntimeError) as exc:
