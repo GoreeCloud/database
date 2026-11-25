@@ -232,6 +232,28 @@ python3 scripts/check_migrations.py --json
 - **Verification:** protected CI asserts SHA256 manifest entries, contiguous order and exact fresh-volume bootstrap calls. Changed SQL requires a new reviewed migration and a reviewed manifest update.
 - **Limit:** an existing volume still needs separately verified migration state, backups, SQL review, explicit authorized `--apply` actions and rollback. See [migration integrity runbook](MIGRATION_INTEGRITY.md).
 
+## Opt-in signed SeaweedFS S3 development sandbox
+
+```sh
+# Safe preflight (no writes):
+python3 scripts/init_s3_env.py
+# Once, with approved local .env and intended storage volume:
+python3 scripts/init_s3_env.py --apply
+# Read-only overlay config check:
+docker compose -f compose.yaml -f compose.s3.yaml --profile s3-preview config --quiet
+# Explicit isolated local-only storage start:
+docker compose -f compose.yaml -f compose.s3.yaml --profile s3-preview up -d seaweedfs
+# Disposable test bucket and generated credentials only, with boto3 installed:
+set -a; . ./.env; set +a
+python3 scripts/s3_preview_smoke.py --disposable
+# Stop without deleting persistent storage:
+docker compose -f compose.yaml -f compose.s3.yaml --profile s3-preview stop seaweedfs
+```
+
+- **Risk:** opt-in state-changing storage service and secret generation; never run against important data or expose outside loopback. Generate secrets privately, verify your target and consult [S3 preview architecture](S3_PREVIEW.md).
+- **Verification:** separate CI job exercises signed S3 protocol PUT/GET/LIST/DELETE, unsigned-denial and safe cleanup. It does **not** change the PostgreSQL object API or enable production S3 storage.
+- **Gaps:** no real bucket ACL/tenant Identity integration, TLS release, data migration, encrypted backup or real Android/web object-client S3 acceptance.
+
 ## Backup and isolated recovery drill
 
 ```sh
