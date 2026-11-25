@@ -11,6 +11,21 @@
 - **Host:** any separately authorized, reviewed local development or CI Docker host; this runbook is **not** authorization to deploy on the production VPS.
 - **Secrets:** use only the local untracked `.env` created by the setup helper. Never place secret values in Git, Drive, terminal history, screenshots, or publicly accessible logs. All examples below use placeholders.
 
+## Operational liveness and readiness
+
+The local-only gateway provides two deliberately distinct, unauthenticated health probes:
+
+```sh
+curl --fail --silent --show-error http://127.0.0.1:4173/api/healthz
+curl --fail --silent --show-error http://127.0.0.1:4173/api/readyz
+```
+
+- **Risk:** read-only, but connection status is observable; do not expose the developer gateway to public networks.
+- `healthz` is process liveness, **not** proof of database access.
+- `readyz` checks a real SELECT-only PostgreSQL connection and returns HTTP 503 on failure, without leaking connection strings.
+- Compose monitors the API `readyz` check using Python's standard library; only the privately networked API service is probed. See [architecture](ARCHITECTURE.md).
+- **Verification:** source/API tests and disposable Compose integration; this is not a full readiness guarantee for S3, Identity, Mesh, or external dependencies.
+
 ## Create and inspect a development stack
 
 | Command | Risk / authentication | Verification |
