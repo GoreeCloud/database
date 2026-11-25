@@ -121,6 +121,7 @@ private fun DatabaseScreen() {
     var client by remember { mutableStateOf<DatabaseClient?>(null) }
     var tableNames by remember { mutableStateOf(listOf<String>()) }
     var showObjects by remember { mutableStateOf(false) }
+    var showSchema by remember { mutableStateOf(false) }
     var chosenTable by remember { mutableStateOf<String?>(null) }
     var columns by remember { mutableStateOf(listOf<String>()) }
     var tableRows by remember { mutableStateOf(listOf<Map<String, String>>()) }
@@ -146,6 +147,7 @@ private fun DatabaseScreen() {
                 tableNames = (0 until arr.length()).map { arr.getJSONObject(it).getString("name") }
                 chosenTable = null
                 showObjects = false
+                showSchema = false
             } catch (e: Exception) {
                 error = e.message ?: "Could not connect"
             } finally {
@@ -157,6 +159,7 @@ private fun DatabaseScreen() {
     fun loadTable(name: String) {
         val current = client ?: return
         chosenTable = name
+        showSchema = false
         busy = true
         error = ""
         scope.launch {
@@ -201,6 +204,7 @@ private fun DatabaseScreen() {
                     client = null
                     chosenTable = null
                     showObjects = false
+                    showSchema = false
                     tableNames = emptyList()
                     tableRows = emptyList()
                     error = ""
@@ -223,11 +227,22 @@ private fun DatabaseScreen() {
                         }
                     }
                 }
+            } else if (showSchema) {
+                val current = client
+                val table = chosenTable
+                if (current != null && table != null) {
+                    SchemaBrowser(client = current, table = table, onClose = { showSchema = false })
+                }
             } else {
-                TextButton(onClick = { chosenTable = null }) { Text("← All tables") }
+                TextButton(onClick = { chosenTable = null; showSchema = false }) { Text("← All tables") }
                 Text(chosenTable ?: "", style = MaterialTheme.typography.titleLarge)
-                TextButton(onClick = { chosenTable?.let { loadTable(it) } }, enabled = !busy) {
-                    Text("Refresh rows")
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    TextButton(onClick = { chosenTable?.let { loadTable(it) } }, enabled = !busy) {
+                        Text("Refresh rows")
+                    }
+                    TextButton(onClick = { showSchema = true }, enabled = !busy) {
+                        Text("Inspect schema")
+                    }
                 }
                 Spacer(Modifier.height(10.dp))
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
