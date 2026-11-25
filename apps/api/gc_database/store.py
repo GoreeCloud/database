@@ -87,3 +87,58 @@ def insert_row(schema: str, table: str, payload: dict[str, Any]) -> dict[str, An
             )
             row = cur.fetchone()
     return {"row": row}
+
+
+def describe_table(schema: str, table: str) -> dict[str, Any]:
+    """Return schema metadata without executing caller-authored SQL.
+
+    All catalog queries are bound and operate over the allowlisted app schema.
+    A dedicated SELECT-only PostgreSQL connection serves the request.
+    """
+    check_schema(schema)
+    check_identifier(table)
+    with connection(read_only=True) as db, db.cursor() as cur:
+        cur.execute(
+            "SELECT column_name, data_type, udt_name, is_nullable, "
+            "column_default, ordinal_position, character_maximum_length "
+            "FROM information_schema.columns "
+            "WHERE table_schema = %s AND table_name = %s "
+            "ORDER BY ordinal_position",
+            (schema, table),
+        )
+        raw_columns = cur.fetchall()
+        if not raw_columns:
+            raise HTTPException(status_code=404, detail="Table not found")
+        cur.execute(
+            "SELECT a.attname AS name "
+            "FROM pg_catalog.pg_index i "
+            "JOIN pg_catalog.pg_class c ON c.oid = i.indrelid "
+            "JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace "
+            "JOIN pg_catalog.pg_attribute a "
+            "  ON a.attrelid = c.oid AND a.attnum = ANY(i.indkey) "
+            "WHERE i.indisprimary = true AND n.nspname = %s AND c.relname = %s",
+            (schema, table),
+        )
+        primary_names = {row["name"] for row in cur.fetchall()}
+        cur.execute(
+            "SELECT indexname AS name, indexdef AS definition "
+            "FROM pg_catalog.pg_indexes "
+            "WHERE schemaname = %s AND tablename = %s ORDER BY indexname",
+            (schema, table),
+        )
+        indexes = cur.fetchall()
+
+    columns = [
+        {
+            "name": item["column_name"],
+            "type": item["data_type"],
+            "database_type": item["udt_name"],
+            "nullable": item["is_nullable"] == "YES",
+            "default": item["column_default"],
+            "ordinal": item["ordinal_position"],
+            "max_length": item["character_maximum_length"],
+            "primary_key": item["column_name"] in primary_names,
+        }
+        for item in raw_columns
+    ]
+    return {"schema": schema, "table": table, "columns": columns, "indexes": indexes}
