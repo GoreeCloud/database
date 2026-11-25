@@ -1,0 +1,29 @@
+{
+  "actions": {
+    "actions/checkout": {
+      "sha": "11bd71901bbe5b1630ceea73d27597364c9af683",
+      "version": "v4.2.2"
+    },
+    "actions/setup-java": {
+      "sha": "c5195efecf7bdfc987ee8bae7a71cb8b11521c00",
+      "version": "v4.7.1"
+    },
+    "actions/setup-node": {
+      "sha": "49933ea5288caeca8642d1e84afbd3f7d6820020",
+      "version": "v4.4.0"
+    },
+    "actions/setup-python": {
+      "sha": "a26af69be951a213d495a4c3e4e4022e16d87065",
+      "version": "v5.6.0"
+    },
+    "actions/upload-artifact": {
+      "sha": "ea165f8d65b6e75b540449e92b4886f43607fa02",
+      "version": "v4.6.2"
+    },
+    "android-actions/setup-android": {
+      "sha": "be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd",
+      "version": "v4.0.4"
+    }
+  },
+  "format": "gc-actions-locked-v1"
+}
