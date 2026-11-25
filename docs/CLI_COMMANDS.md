@@ -254,6 +254,18 @@ docker compose -f compose.yaml -f compose.s3.yaml --profile s3-preview stop seaw
 - **Verification:** separate CI job exercises signed S3 protocol PUT/GET/LIST/DELETE, unsigned-denial and safe cleanup. It does **not** change the PostgreSQL object API or enable production S3 storage.
 - **Gaps:** no real bucket ACL/tenant Identity integration, TLS release, data migration, encrypted backup or real Android/web object-client S3 acceptance.
 
+## Offline verified GitHub Actions source pins
+
+```sh
+# Read-only source check; no GitHub connection or software installation:
+python3 scripts/check_ci_actions.py
+python3 -m unittest scripts.test_ci_actions -v
+```
+
+- **Risk:** read-only checks. Updating pins must be a reviewed source commit with upstream digest/provenance inspection.
+- **Verification:** rejects mutable action tags and mismatched lockfile entries; protected CI config job exercises this gate. See [CI action pinning](ACTION_PINNING.md).
+- **Limit:** OCI image digests, full dependency SBOM, signed release artifacts and dependency security audits are pending.
+
 ## Backup and isolated recovery drill
 
 ```sh
