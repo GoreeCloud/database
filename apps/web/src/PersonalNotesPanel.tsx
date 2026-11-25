@@ -18,6 +18,7 @@ export default function PersonalNotesPanel({ token }: { token: string }) {
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [editing, setEditing] = useState(false)
+  const [pendingDelete, setPendingDelete] = useState<PersonalNote | null>(null)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
   const controller = useRef<AbortController | null>(null)
@@ -32,6 +33,7 @@ export default function PersonalNotesPanel({ token }: { token: string }) {
     setTitle('')
     setContent('')
     setEditing(false)
+    setPendingDelete(null)
     setMessage('')
     setOffset(0)
     setBusy(false)
@@ -47,6 +49,7 @@ export default function PersonalNotesPanel({ token }: { token: string }) {
     setTitle('')
     setContent('')
     setEditing(false)
+    setPendingDelete(null)
     setMessage('')
     setOffset(0)
     setBusy(false)
@@ -80,6 +83,36 @@ export default function PersonalNotesPanel({ token }: { token: string }) {
       setAuthorized(false)
       setMessage(error instanceof Error ? error.message : 'Private notes are unavailable')
       setOpened(true)
+    } finally {
+      if (revision === generation.current) setBusy(false)
+    }
+  }
+
+  async function deleteConfirmed() {
+    const note = pendingDelete
+    if (busy || !opened || !authorized || !note || !token) return
+    const revision = generation.current
+    setBusy(true)
+    setMessage('')
+    try {
+      const response = await fetch('/api/v1/me/notes/' + encodeURIComponent(note.id), {
+        method: 'DELETE',
+        headers: {
+          Authorization: 'Bearer ' + token,
+          'X-GC-Confirm-Delete': 'delete-my-note',
+        },
+        cache: 'no-store',
+      })
+      if (response.status === 401) throw new Error('Deleting a private note requires a signed token with both read and write scopes.')
+      if (response.status === 404) throw new Error('Note not found for this signed subject.')
+      if (!response.ok) throw new Error('Unable to remove private note (HTTP ' + response.status + ')')
+      if (revision !== generation.current) return
+      setPendingDelete(null)
+      setBusy(false)
+      await loadPage(offset, true)
+      setMessage('Note removed from the active database. Backups may retain copies.')
+    } catch (error) {
+      if (revision === generation.current) setMessage(error instanceof Error ? error.message : 'Private note deletion failed')
     } finally {
       if (revision === generation.current) setBusy(false)
     }
@@ -136,6 +169,14 @@ export default function PersonalNotesPanel({ token }: { token: string }) {
           {editing ? 'Cancel editor' : 'Create note'}
         </button>
       </div>
+      {pendingDelete && <div className="personal-confirm" role="alertdialog" aria-label="Confirm private-note deletion">
+        <strong>Delete this note from the active database?</strong>
+        <p><strong>{pendingDelete.title}</strong> will be permanently removed from the live notes table. Backups may retain copies.</p>
+        <div className="personal-actions">
+          <button className="secondary small" disabled={busy} onClick={() => setPendingDelete(null)}>Cancel</button>
+          <button className="small" disabled={busy} onClick={() => void deleteConfirmed()}>Confirm delete my note</button>
+        </div>
+      </div>}
       {editing && <form className="personal-form" onSubmit={event => void createNote(event)}>
         <label htmlFor="private-note-title">Note title</label>
         <input id="private-note-title" autoComplete="off" maxLength={120} value={title}
@@ -150,6 +191,7 @@ export default function PersonalNotesPanel({ token }: { token: string }) {
           <h3>{note.title}</h3>
           <time dateTime={note.created_at}>{new Date(note.created_at).toLocaleString()}</time>
           <p>{note.content}</p>
+          <button className="secondary small" disabled={busy} onClick={() => setPendingDelete(note)}>Delete note</button>
         </article>)}
         {notes.length === 0 && !busy && <p className="empty">No notes visible for this signed subject.</p>}
       </div>

@@ -77,6 +77,27 @@ internal class DatabaseClient(private val endpoint: String, private val secret: 
         }
     }
 
+    fun deletePersonalNote(rawId: String) {
+        val noteId = java.util.UUID.fromString(rawId)
+        val connection = URL(base + "/v1/me/notes/" + noteId).openConnection() as HttpsURLConnection
+        connection.connectTimeout = 8000
+        connection.readTimeout = 8000
+        connection.instanceFollowRedirects = false
+        connection.requestMethod = "DELETE"
+        connection.setRequestProperty("Authorization", "Bearer $secret")
+        connection.setRequestProperty("X-GC-Confirm-Delete", "delete-my-note")
+        connection.setRequestProperty("Cache-Control", "no-store")
+        try {
+            if (connection.responseCode != 204) {
+                throw IllegalStateException(
+                    "Private note deletion unavailable (HTTP ${connection.responseCode}); verify signed OIDC owner and write scope"
+                )
+            }
+        } finally {
+            connection.disconnect()
+        }
+    }
+
     fun createPersonalNote(title: String, content: String) {
         val cleanedTitle = title.trim()
         val cleanedContent = content.trim()

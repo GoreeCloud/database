@@ -206,6 +206,21 @@ python3 scripts/object_deletion_smoke.py --disposable
 - **Verification:** viewer deletion denied, explicit confirmation and expected SHA-256 required, one-row DELETE returns 204, subsequent GET returns 404, metadata-only DELETE audit event verified.
 - **Limit:** no soft-delete, per-user object ownership or erasure from backups/WAL. See [object deletion runbook](OBJECT_DELETION.md).
 
+## Explicit per-subject note DELETE policy and disposal test
+
+```sh
+# Safe usage check (no mutation):
+sh scripts/apply_personal_note_delete_migration.sh
+# Reviewed and authorized target only, after verifying backups:
+sh scripts/apply_personal_note_delete_migration.sh --apply
+# Disposable CI PostgreSQL only; all fixtures are transaction-rolled-back:
+sh scripts/personal_rls_smoke.sh --disposable
+```
+
+- **Risk:** additive RLS DELETE grant and policy for the private notes table; verify OIDC subject-binding and backups before authorized migration. Do not run against important data without change approval.
+- **Verification:** the CI RLS smoke confirms Alice cannot delete Bob's note, can delete Alice's note, and the viewer role lacks DELETE. API tests verify exact explicit confirmation and signed scopes.
+- **Limit:** no erasure from WAL/backups, no production consent/retention guarantee. See [privacy limits](PERSONAL_ERASURE.md).
+
 ## Backup and isolated recovery drill
 
 ```sh
