@@ -144,9 +144,21 @@ sh scripts/apply_audit_migration.sh --apply
 python3 scripts/audit_smoke.py
 ```
 
-- **Risk:** audit migration changes PostgreSQL triggers and grants, and may briefly lock tables; it requires a reviewed SQL diff, backup, change window and rollback procedure.
-- **Verification:** CI checks catalog and small-object INSERT metadata, rejection of the viewer token, and strictly fixed response field names.
-- **Limits:** source tables only, no actor attribution, deletion policy, tamper evidence or full Wardveil integration. See [audit metadata runbook](AUDIT_METADATA.md).
+- **Risk:** audit migration changes PostgreSQL triggers and grants, and may briefly lock tables; review SQL, backups, change window and rollback.
+- **Verification:** CI checks catalog/small-object INSERT metadata, rejection of the viewer token, and fixed response fields.
+- **Limits:** two source tables only; no actor attribution, retention, tamper evidence or full Wardveil integration. See [audit runbook](AUDIT_METADATA.md).
+
+## Disposable administrator write throttle verification
+
+```sh
+# Only after disposable environment, data volume and credentials are verified:
+set -a; . ./.env; set +a
+python3 scripts/admin_write_smoke.py --disposable
+```
+
+- **Risk:** state-changing; intentionally inserts disposable catalog rows, never use on real/irreplaceable records.
+- **Expected:** HTTP 429 Retry-After on excess admin writes while viewer reads continue.
+- **Limit:** per-process quota reset on restart, no user/tenant protection. See [write throttle runbook](WRITE_THROTTLE.md).
 
 ## Backup and isolated recovery drill
 

@@ -8,6 +8,7 @@ import re
 from fastapi import Header, HTTPException, status
 
 from .oidc import oidc_reader_authorized, oidc_settings
+from .rate_limits import admin_write_throttle
 
 IDENTIFIER_RE = re.compile(r"^[a-z_][a-z0-9_]{0,62}$")
 SCHEMA = "app"
@@ -55,6 +56,7 @@ def current_scope(authorization: str | None = Header(default=None)) -> str:
 def require_admin(authorization: str | None = Header(default=None)) -> None:
     if current_scope(authorization) != "admin":
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Administrator token required")
+    admin_write_throttle.check()
 
 
 def require_admin_view(authorization: str | None = Header(default=None)) -> None:
