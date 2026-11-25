@@ -71,6 +71,13 @@ jobs:
           . ./.env
           set +a
           sh scripts/smoke.sh
+      - name: Verify guarded backup CLI and isolated recovery drill
+        run: |
+          python3 -m unittest discover -s scripts -p "test_*.py"
+          backup_dir="$(mktemp -d)"
+          trap 'rm -f "$backup_dir/test.backup"; rmdir "$backup_dir"' EXIT
+          python3 scripts/backup.py --output "$backup_dir/test.backup" --apply
+          python3 scripts/restore_check.py --archive "$backup_dir/test.backup" --apply
       - name: Collect startup logs on failure
         if: failure()
         run: docker compose logs --no-color --tail=80
