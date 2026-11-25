@@ -77,6 +77,12 @@ def require_personal_write(authorization: str | None = Header(default=None)) -> 
     return subject
 
 
+def require_admin_view(authorization: str | None = Header(default=None)) -> None:
+    """Admin-only read authorization, separate from optional write throttling."""
+    if current_scope(authorization) != "admin":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Administrator token required")
+
+
 def require_read(authorization: str | None = Header(default=None)) -> None:
     current_scope(authorization)
 

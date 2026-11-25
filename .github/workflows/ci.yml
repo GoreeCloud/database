@@ -87,6 +87,12 @@ jobs:
           . ./.env
           set +a
           python3 scripts/object_storage_smoke.py
+      - name: Verify private metadata-only audit
+        run: |
+          set -a
+          . ./.env
+          set +a
+          python3 scripts/audit_smoke.py
       - name: Verify per-subject PostgreSQL RLS and private note quota
         run: sh scripts/personal_rls_smoke.sh --disposable
       - name: Verify aggregate small-object quota in disposable database

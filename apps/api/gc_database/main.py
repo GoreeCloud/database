@@ -9,10 +9,14 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from psycopg import Error as DatabaseError
 
-from . import store, storage, personal
+from . import store, storage, personal, audit
 from .exports import export_table_csv
 from .realtime import open_catalog_event_stream
-from .security import current_scope, require_admin, require_read, require_personal_read, require_personal_write, require_configuration, check_schema, check_identifier
+from .security import (
+    current_scope, require_admin, require_admin_view, require_read,
+    require_personal_read, require_personal_write, require_configuration,
+    check_schema, check_identifier,
+)
 
 log = logging.getLogger("goreecloud.database")
 
@@ -75,6 +79,18 @@ def personal_notes(
 ):
     return jsonable_encoder({
         "notes": personal.list_personal_notes(subject, limit, offset),
+        "limit": limit,
+        "offset": offset,
+    })
+
+
+@app.get("/v1/audit/events", dependencies=[Depends(require_admin_view)])
+def audit_events(
+    limit: int = Query(25, ge=1, le=100),
+    offset: int = Query(0, ge=0, le=10000),
+):
+    return jsonable_encoder({
+        "events": audit.list_audit_events(limit, offset),
         "limit": limit,
         "offset": offset,
     })
