@@ -12,9 +12,9 @@ This is an independently developed GoreeCloud integration. It does **not** claim
 - FastAPI management API with distinct administrator and read-only bearer tokens, separate PostgreSQL read and write roles, allowlisted `app` schema, table discovery, paginated row reads and parameterized inserts.
 - React/TypeScript browser console using the verified GoreeCloud UI alpha semantic palette (no copied stable design claims).
 - Kotlin/Jetpack Compose Android app for HTTPS management API table browsing, with in-memory credentials.
-- Container configuration, secret generation, minimal tests, GitHub Actions, architecture and security guidance.
+- Container configuration, secret generation, guarded custom-format PostgreSQL backup, network-isolated restore drill, tests, GitHub Actions, architecture and security guidance.
 
-**Not implemented:** user signup/SSO/auth sessions, general-purpose realtime subscriptions, object storage, edge functions, multi-tenant project orchestration, project provisioning, arbitrary SQL editor, migrations UI, full backup recovery, managed hosting, signed APK or production device validation. PostgreSQL roles, a shared bearer admin secret and local-only networking are *not* a multiuser identity service.
+**Not implemented:** user signup/SSO/auth sessions, general-purpose or durable realtime subscriptions, object storage, edge functions, multi-tenant project orchestration, project provisioning, arbitrary SQL editor, migrations UI, certified full backup recovery/PITR, managed hosting, signed APK or production device validation. PostgreSQL roles, shared development bearer tokens and local-only networking are *not* a multiuser identity service.
 
 ## Quick start (local development)
 
@@ -45,7 +45,7 @@ For web-only development: `cd apps/web && npm install && npm run dev`; Vite prox
 - `apps/api`: authenticated control API.
 - `apps/web`: browser management console.
 - `apps/android`: Kotlin/Jetpack Compose Android management client.
-- `scripts`: local secret setup, explicit read-role and catalog-events migrations, and safe test utilities. See [realtime preview](docs/REALTIME_PREVIEW.md).
+- `scripts`: local secret setup, explicit read-role/catalog-event migrations, guarded logical backup and isolated restore drill. See [access upgrade](docs/READ_ONLY_ACCESS.md), [realtime preview](docs/REALTIME_PREVIEW.md) and [recovery runbook](docs/BACKUP_AND_RECOVERY.md).
 - `docs`: architecture, threat model, roadmap, component licenses, recovery limitations.
 
 ## Security boundaries
