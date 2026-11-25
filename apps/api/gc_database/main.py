@@ -4,11 +4,12 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi.responses import Response
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from psycopg import Error as DatabaseError
 
-from . import store
+from . import store, storage
 from .realtime import open_catalog_event_stream
 from .security import current_scope, require_admin, require_read, require_configuration, check_schema, check_identifier
 
@@ -74,3 +75,50 @@ def add_row(schema: str, table: str, payload: dict):
     check_schema(schema)
     check_identifier(table)
     return jsonable_encoder(store.insert_row(schema, table, payload))
+
+
+@app.get("/v1/objects", dependencies=[Depends(require_read)])
+def list_private_objects(
+    limit: int = Query(25, ge=1, le=100),
+    offset: int = Query(0, ge=0, le=1000000),
+):
+    return jsonable_encoder({"objects": storage.list_objects(limit, offset), "limit": limit, "offset": offset})
+
+
+@app.post("/v1/objects", status_code=201, dependencies=[Depends(require_admin)])
+async def upload_private_object(request: Request, filename: str = Query(...)):
+    storage.check_filename(filename)
+    media_type = storage.check_media_type(
+        request.headers.get("content-type", "application/octet-stream").split(";")[0].strip().lower()
+    )
+    declared_size = request.headers.get("content-length")
+    if declared_size:
+        try:
+            expected = int(declared_size)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid Content-Length") from None
+        if expected > storage.MAX_OBJECT_BYTES:
+            raise HTTPException(status_code=413, detail="Object exceeds 1 MiB limit")
+    content = bytearray()
+    async for part in request.stream():
+        if len(content) + len(part) > storage.MAX_OBJECT_BYTES:
+            raise HTTPException(status_code=413, detail="Object exceeds 1 MiB limit")
+        content.extend(part)
+    if not content:
+        raise HTTPException(status_code=422, detail="Empty objects are not supported")
+    return jsonable_encoder({"object": storage.save_object(filename, media_type, bytes(content))})
+
+
+@app.get("/v1/objects/{object_id}", dependencies=[Depends(require_read)])
+def download_private_object(object_id: str):
+    result = storage.read_object(object_id)
+    return Response(
+        content=result["contents"],
+        media_type="application/octet-stream",
+        headers={
+            "Content-Disposition": f'attachment; filename="{result["filename"]}"',
+            "X-Content-Type-Options": "nosniff",
+            "Cache-Control": "no-store",
+            "Content-Security-Policy": "sandbox",
+        },
+    )
