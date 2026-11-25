@@ -13,22 +13,22 @@ from .security import check_identifier, check_schema
 
 
 @contextmanager
-def connection():
+def connection(read_only: bool = False):
     with psycopg.connect(
         host=os.environ["DB_HOST"],
         port=int(os.environ.get("DB_PORT", "5432")),
         dbname=os.environ["DB_NAME"],
-        user=os.environ["DB_USER"],
-        password=os.environ["DB_PASSWORD"],
+        user=os.environ["DB_READ_USER"] if read_only else os.environ["DB_USER"],
+        password=os.environ["DB_READ_PASSWORD"] if read_only else os.environ["DB_PASSWORD"],
         connect_timeout=5,
         row_factory=dict_row,
-        options="-c statement_timeout=5000",
+        options="-c statement_timeout=5000 -c default_transaction_read_only=on" if read_only else "-c statement_timeout=5000",
     ) as db:
         yield db
 
 
 def list_tables() -> list[dict[str, Any]]:
-    with connection() as db, db.cursor() as cur:
+    with connection(read_only=True) as db, db.cursor() as cur:
         cur.execute(
             "SELECT schemaname AS schema, tablename AS name "
             "FROM pg_catalog.pg_tables WHERE schemaname = %s ORDER BY tablename",
@@ -53,7 +53,7 @@ def columns(db: psycopg.Connection, schema: str, table: str) -> list[str]:
 
 
 def fetch_rows(schema: str, table: str, limit: int, offset: int) -> dict[str, Any]:
-    with connection() as db:
+    with connection(read_only=True) as db:
         allowed = columns(db, schema, table)
         with db.cursor() as cur:
             cur.execute(

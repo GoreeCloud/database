@@ -8,7 +8,8 @@ from gc_database.main import app
 
 def configured(monkeypatch):
     monkeypatch.setenv("GC_ADMIN_TOKEN", "T" * 48)
-    for k in ("DB_HOST", "DB_NAME", "DB_USER", "DB_PASSWORD"):
+    monkeypatch.setenv("GC_READ_TOKEN", "R" * 48)
+    for k in ("DB_HOST", "DB_NAME", "DB_USER", "DB_PASSWORD", "DB_READ_USER", "DB_READ_PASSWORD"):
         monkeypatch.setenv(k, "dummy")
 
 

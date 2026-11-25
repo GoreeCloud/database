@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 from psycopg import Error as DatabaseError
 
 from . import store
-from .security import require_admin, require_configuration, check_schema, check_identifier
+from .security import current_scope, require_admin, require_read, require_configuration, check_schema, check_identifier
 
 log = logging.getLogger("goreecloud.database")
 
@@ -46,12 +46,17 @@ def health() -> dict[str, str]:
     return {"status": "online"}
 
 
-@app.get("/v1/tables", dependencies=[Depends(require_admin)])
+@app.get("/v1/session")
+def session(scope: str = Depends(current_scope)):
+    return {"scope": scope, "permissions": ["read", "write"] if scope == "admin" else ["read"]}
+
+
+@app.get("/v1/tables", dependencies=[Depends(require_read)])
 def tables():
     return {"tables": store.list_tables()}
 
 
-@app.get("/v1/tables/{schema}/{table}/rows", dependencies=[Depends(require_admin)])
+@app.get("/v1/tables/{schema}/{table}/rows", dependencies=[Depends(require_read)])
 def rows(schema: str, table: str, limit: int = Query(25, ge=1, le=100), offset: int = Query(0, ge=0, le=1000000)):
     check_schema(schema)
     check_identifier(table)
