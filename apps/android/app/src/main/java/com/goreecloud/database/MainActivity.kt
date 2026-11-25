@@ -1,6 +1,8 @@
 package com.goreecloud.database
 
 import android.os.Bundle
+import android.animation.ValueAnimator
+import com.goreecloud.ui.material3.GoreeCloudExpressiveTheme
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
@@ -12,7 +14,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -25,23 +26,14 @@ import java.net.URL
 import java.io.ByteArrayOutputStream
 import javax.net.ssl.HttpsURLConnection
 
-private val Canvas = Color(0xFF0D121D)
-private val Surface = Color(0xFF171D2A)
-private val Brand = Color(0xFFBFB8FF)
-private val OnBrand = Color(0xFF272057)
-private val SoftText = Color(0xFFCED5E5)
-
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            MaterialTheme(colorScheme = darkColorScheme(
-                primary = Brand,
-                onPrimary = OnBrand,
-                background = Canvas,
-                surface = Surface,
-                onSurface = Color(0xFFF2F4FB),
-            )) {
+            GoreeCloudExpressiveTheme(
+                dynamicWallpaperColors = false,
+                reduceMotion = !ValueAnimator.areAnimatorsEnabled()
+            ) {
                 DatabaseScreen()
             }
         }
@@ -72,6 +64,39 @@ internal class DatabaseClient(private val endpoint: String, private val secret: 
                 throw IllegalStateException("Request failed (HTTP ${connection.responseCode})")
             }
             return JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    fun createPersonalNote(title: String, content: String) {
+        val cleanedTitle = title.trim()
+        val cleanedContent = content.trim()
+        require(cleanedTitle.length in 1..120 && cleanedContent.length in 1..2048 &&
+            cleanedContent.toByteArray(Charsets.UTF_8).size <= 8192) {
+            "Private note title or content exceeds preview limits"
+        }
+        // Owner subject comes ONLY from the backend's signature-verified JWT;
+        // never include a caller-supplied owner in the JSON payload.
+        val body = JSONObject().put("title", cleanedTitle).put("content", cleanedContent)
+            .toString().toByteArray(Charsets.UTF_8)
+        val connection = URL(base + "/v1/me/notes").openConnection() as HttpsURLConnection
+        connection.connectTimeout = 8000
+        connection.readTimeout = 8000
+        connection.instanceFollowRedirects = false
+        connection.requestMethod = "POST"
+        connection.doOutput = true
+        connection.setRequestProperty("Authorization", "Bearer $secret")
+        connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+        connection.setRequestProperty("Accept", "application/json")
+        connection.setRequestProperty("Cache-Control", "no-store")
+        try {
+            connection.outputStream.use { it.write(body) }
+            if (connection.responseCode != 201) {
+                throw IllegalStateException(
+                    "Private note write unavailable (HTTP ${connection.responseCode}); a scoped OIDC token is required"
+                )
+            }
         } finally {
             connection.disconnect()
         }
@@ -162,6 +187,7 @@ private fun DatabaseScreen() {
     var client by remember { mutableStateOf<DatabaseClient?>(null) }
     var tableNames by remember { mutableStateOf(listOf<String>()) }
     var showObjects by remember { mutableStateOf(false) }
+    var showPersonal by remember { mutableStateOf(false) }
     var showSchema by remember { mutableStateOf(false) }
     var chosenTable by remember { mutableStateOf<String?>(null) }
     var columns by remember { mutableStateOf(listOf<String>()) }
@@ -188,6 +214,7 @@ private fun DatabaseScreen() {
                 tableNames = (0 until arr.length()).map { arr.getJSONObject(it).getString("name") }
                 chosenTable = null
                 showObjects = false
+                showPersonal = false
                 showSchema = false
             } catch (e: Exception) {
                 error = e.message ?: "Could not connect"
@@ -223,17 +250,17 @@ private fun DatabaseScreen() {
     }
 
     Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
-        Text("GOREECLOUD · SELF-HOSTED", color = Brand, style = MaterialTheme.typography.labelSmall)
+        Text("GOREECLOUD · SELF-HOSTED", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall)
         Spacer(Modifier.height(12.dp))
         Text("Database", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
-        Text("Native management preview", color = SoftText, style = MaterialTheme.typography.bodyMedium)
+        Text("Native management preview", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
         Spacer(Modifier.height(20.dp))
         if (client == null) {
             OutlinedTextField(value = endpoint, onValueChange = { endpoint = it }, modifier = Modifier.fillMaxWidth(),
                 label = { Text("HTTPS API base URL") }, singleLine = true, placeholder = { Text("https://db.example/api") })
             Spacer(Modifier.height(12.dp))
             OutlinedTextField(value = inputToken, onValueChange = { inputToken = it }, modifier = Modifier.fillMaxWidth(),
-                label = { Text("Admin or viewer token") }, visualTransformation = PasswordVisualTransformation(), singleLine = true)
+                label = { Text("Admin, viewer, or signed OIDC token") }, visualTransformation = PasswordVisualTransformation(), singleLine = true)
             Spacer(Modifier.height(16.dp))
             Button(onClick = { connect() }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Connect securely") }
             Spacer(Modifier.height(14.dp))
@@ -245,6 +272,7 @@ private fun DatabaseScreen() {
                     client = null
                     chosenTable = null
                     showObjects = false
+                    showPersonal = false
                     showSchema = false
                     tableNames = emptyList()
                     tableRows = emptyList()
@@ -253,12 +281,17 @@ private fun DatabaseScreen() {
             }
             if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
             Spacer(Modifier.height(12.dp))
-            if (showObjects) {
+            if (showPersonal) {
+                client?.let { current -> PersonalNotesBrowser(client = current, onClose = { showPersonal = false }) }
+            } else if (showObjects) {
                 client?.let { current -> ObjectBrowser(client = current, onClose = { showObjects = false }) }
             } else if (chosenTable == null) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text("Tables", style = MaterialTheme.typography.titleLarge)
                     TextButton(onClick = { showObjects = true }, enabled = !busy) { Text("Small objects") }
+                }
+                TextButton(onClick = { showPersonal = true }, enabled = !busy) {
+                    Text("Personal notes (signed OIDC)")
                 }
                 Spacer(Modifier.height(10.dp))
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -294,7 +327,7 @@ private fun DatabaseScreen() {
                         Card(shape = RoundedCornerShape(18.dp)) {
                             Column(Modifier.padding(16.dp)) {
                                 columns.forEach { col ->
-                                    Text(col, color = Brand, style = MaterialTheme.typography.labelSmall)
+                                    Text(col, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall)
                                     Text(row[col] ?: "NULL", style = MaterialTheme.typography.bodyMedium)
                                     Spacer(Modifier.height(9.dp))
                                 }

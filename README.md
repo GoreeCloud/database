@@ -12,8 +12,8 @@ This is an independently developed GoreeCloud integration. It does **not** claim
 - [Administrator-only metadata audit](docs/AUDIT_METADATA.md) of catalog and small-object mutations via PostgreSQL triggers; no row values, client identity, token or user claims are stored. The React console can inspect the bounded event list.
 - Private, authenticated small-object API in a distinct PostgreSQL schema, with strict 1 MiB per-object and [512-object / 128 MiB total quotas](docs/OBJECT_QUOTA.md), safe download headers, SHA256 validation and [two-step confirmed single-object deletion](docs/OBJECT_DELETION.md) for shared administrators. This is **not S3-compatible storage**.
 - FastAPI management API with distinct administrator and read-only bearer tokens, opt-in [signed OIDC access-token verification](docs/OIDC_READER.md), an isolated [per-subject PostgreSQL RLS notes preview](docs/PERSONAL_RLS.md) with explicitly scoped note-only writes, a [30-per-minute single-process shared-admin write throttle](docs/WRITE_THROTTLE.md), separate PostgreSQL roles, allowlisted `app` schema, table discovery, read-only column/primary-key/index inspection, bounded spreadsheet-safe [CSV page export](docs/CSV_EXPORT.md), paginated row reads and parameterized inserts.
-- React/TypeScript browser console using the verified GoreeCloud UI alpha semantic palette, including safe current-page CSV export, schema inspection and authenticated small-object browsing, bounded administrator upload and download.
-- Kotlin/Jetpack Compose Android app for HTTPS management API table browsing, [read-only native schema inspection and bounded CSV saving](docs/ANDROID_SCHEMA.md), and private small-object listing/saving through Android's Storage Access Framework, with in-memory credentials.
+- React/TypeScript browser console using the verified GoreeCloud UI alpha semantic palette, including safe current-page CSV export, schema inspection, authenticated small-object browsing and an opt-in [OIDC personal notes panel](docs/PERSONAL_CLIENTS.md) with no persistent client storage.
+- Kotlin/Jetpack Compose Android app for HTTPS management API table browsing, [read-only schema inspection and bounded CSV saving](docs/ANDROID_SCHEMA.md), [signed-OIDC personal notes](docs/PERSONAL_CLIENTS.md) and private small-object listing/saving through Android's Storage Access Framework, with in-memory credentials.
 - Container configuration, secret generation, guarded custom-format PostgreSQL backup, network-isolated restore drill, tests, GitHub Actions, architecture and security guidance.
 
 **Not implemented:** user signup/SSO/auth sessions, general-purpose or durable realtime subscriptions, S3-compatible object storage, edge functions, multi-tenant project orchestration, project provisioning, arbitrary SQL editor, migrations UI, certified full backup recovery/PITR, managed hosting, signed APK or production device validation. PostgreSQL roles, shared development bearer tokens and local-only networking are *not* a multiuser identity service.
@@ -64,6 +64,19 @@ GoreeCloud UI: alpha semantic tokens taken from verified `GoreeCloud/gc-ui` (not
 
 ## Open-source attribution
 
-First-party code is under [Apache License 2.0](LICENSE). Upstream components are **not copied or relicensed**. Their runtime images and package dependencies retain their original license terms; see [third-party components](docs/THIRD_PARTY.md). When shipping binaries/images, verify the exact artifact version, license notices and SBOM before distribution.
+First-party code is under [Apache License 2.0](LICENSE). The Android client includes an unmodified, MIT-licensed source snapshot of the canonical GoreeCloud UI Material 3 Expressive Compose adapter (see [source provenance](apps/android/gc-ui-compose/UPSTREAM.md) and its retained `LICENSE`). Other runtime images and package dependencies retain their own upstream license terms; see [third-party components](docs/THIRD_PARTY.md). When shipping binaries/images, verify the exact artifact version, license notices and SBOM before distribution.
 
 Contributions and security issues: see [SECURITY.md](SECURITY.md). Development status is tracked in GitHub, not inferred from this README.
+
+## Android design foundation
+
+The native Android development client now uses a pinned, source-level GoreeCloud UI
+Material 3 Expressive theme with canonical light/dark semantic roles, four accent
+families, rounded surfaces, and accessibility-aware motion preference. The product
+defaults to Iris and does not enable dynamic wallpaper colors without a user choice.
+The native build requires Android SDK 37.1, Gradle 9.4.1 and JDK 17, preserving
+the existing minSdk/targetSdk and client authentication behavior.
+
+This source integration is not a released SDK, a signed production APK, a physical
+device / TalkBack acceptance, or a claim that the shared administrator API is
+production-ready. See `apps/android/gc-ui-compose/UPSTREAM.md`.
